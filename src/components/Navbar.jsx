@@ -76,6 +76,17 @@ function Navbar() {
             ))}
             <li>
               <NavLink
+                to="/randomizer"
+                className={({ isActive }) =>
+                  `navbar__menu-link${isActive ? ' navbar__menu-link--active' : ''}`
+                }
+                onClick={closeMenu}
+              >
+                Randomizer
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
                 to="/login"
                 className={({ isActive }) =>
                   `navbar__menu-link${isActive ? ' navbar__menu-link--active' : ''}`
