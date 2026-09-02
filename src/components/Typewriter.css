@@ -1,0 +1,42 @@
+.typewriter {
+  display: inline;
+  margin: 0;
+  font: inherit;
+  font-weight: inherit;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: inherit;
+}
+
+.typewriter__cursor {
+  display: inline-block;
+  margin-left: 0.02em;
+  font-weight: 200;
+  font-size: 1.12em;
+  line-height: 1;
+  color: currentColor;
+  animation: tw-blink 0.7s infinite;
+}
+
+@keyframes tw-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typewriter__cursor {
+    display: none;
+    animation: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .typewriter {
+    white-space: normal;
+  }
+}
