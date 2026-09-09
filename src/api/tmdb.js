@@ -47,6 +47,7 @@ function normalizeItem(item, mediaType) {
     date,
     imagePath,
     popularity: item.popularity ?? 0,
+    genreIds: item.genre_ids || [],
   }
 }
 
@@ -65,21 +66,27 @@ const SEARCH_ENDPOINTS = {
   person: { path: '/search/person' },
 }
 
-export async function searchTmdb({ query, type = 'all', year = '' }) {
+function matchesGenre(item, genre) {
+  if (!genre) return true
+  if (item.mediaType === 'movie') return Boolean(genre.movieId && item.genreIds.includes(genre.movieId))
+  if (item.mediaType === 'tv') return Boolean(genre.tvId && item.genreIds.includes(genre.tvId))
+  return false
+}
+
+export async function searchTmdb({ query, type = 'all', year = '', genre = null }) {
   const trimmed = query.trim()
   if (!trimmed) return []
 
   const yearValue = year.trim()
+  let results
 
   if (type !== 'all') {
     const endpoint = SEARCH_ENDPOINTS[type]
     const params = { query: trimmed }
     if (endpoint.yearKey && yearValue) params[endpoint.yearKey] = yearValue
     const data = await tmdbFetch(endpoint.path, params)
-    return mapResults(data.results, type)
-  }
-
-  if (yearValue) {
+    results = mapResults(data.results, type)
+  } else if (yearValue) {
     const [movies, shows] = await Promise.all([
       tmdbFetch('/search/movie', {
         query: trimmed,
@@ -91,23 +98,151 @@ export async function searchTmdb({ query, type = 'all', year = '' }) {
       }),
     ])
 
-    return [...mapResults(movies.results, 'movie'), ...mapResults(shows.results, 'tv')].sort(
+    results = [...mapResults(movies.results, 'movie'), ...mapResults(shows.results, 'tv')].sort(
       (a, b) => b.popularity - a.popularity,
+    )
+  } else {
+    const data = await tmdbFetch('/search/multi', { query: trimmed })
+    results = mapResults(data.results)
+  }
+
+  return genre ? results.filter((item) => matchesGenre(item, genre)) : results
+}
+
+const GENRE_SLUGS = {
+  'Science Fiction': 'sci-fi',
+  'TV Movie': 'tv-movie',
+  'Action & Adventure': 'action-adventure',
+  'Sci-Fi & Fantasy': 'sci-fi-fantasy',
+  'War & Politics': 'war-politics',
+}
+
+export function genreHashtag(name) {
+  const slug =
+    GENRE_SLUGS[name] ||
+    name
+      .toLowerCase()
+      .replace(/&/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+
+  return `#${slug}`
+}
+
+function mapGenreList(genres, mediaType) {
+  return (genres || []).map((genre) => ({
+    key: `${mediaType}-${genre.id}`,
+    name: genre.name,
+    tag: genreHashtag(genre.name),
+    movieId: mediaType === 'movie' ? genre.id : null,
+    tvId: mediaType === 'tv' ? genre.id : null,
+  }))
+}
+
+let movieGenresPromise = null
+let tvGenresPromise = null
+
+function getMovieGenres() {
+  if (!movieGenresPromise) {
+    movieGenresPromise = tmdbFetch('/genre/movie/list')
+      .then((data) => mapGenreList(data.genres, 'movie'))
+      .catch((error) => {
+        movieGenresPromise = null
+        throw error
+      })
+  }
+
+  return movieGenresPromise
+}
+
+function getTvGenres() {
+  if (!tvGenresPromise) {
+    tvGenresPromise = tmdbFetch('/genre/tv/list')
+      .then((data) => mapGenreList(data.genres, 'tv'))
+      .catch((error) => {
+        tvGenresPromise = null
+        throw error
+      })
+  }
+
+  return tvGenresPromise
+}
+
+export async function getSearchGenres(type = 'all') {
+  if (type === 'tv') return getTvGenres()
+  if (type === 'movie') return getMovieGenres()
+
+  const [movies, shows] = await Promise.all([getMovieGenres(), getTvGenres()])
+  const byTag = new Map()
+
+  for (const genre of movies) {
+    byTag.set(genre.tag, { ...genre, key: genre.tag })
+  }
+
+  for (const genre of shows) {
+    const existing = byTag.get(genre.tag)
+    if (existing) {
+      existing.tvId = genre.tvId
+    } else {
+      byTag.set(genre.tag, { ...genre, key: genre.tag })
+    }
+  }
+
+  return [...byTag.values()]
+}
+
+export async function discoverByGenre({ genre, type = 'all', year = '' }) {
+  if (!genre) return []
+
+  const yearValue = year.trim()
+  const requests = []
+  const wantMovies = type === 'all' || type === 'movie'
+  const wantTv = type === 'all' || type === 'tv'
+
+  if (wantMovies && genre.movieId) {
+    const params = { with_genres: genre.movieId, sort_by: 'popularity.desc' }
+    if (yearValue) params.primary_release_year = yearValue
+    requests.push(
+      tmdbFetch('/discover/movie', params).then((data) => mapResults(data.results, 'movie')),
     )
   }
 
-  const data = await tmdbFetch('/search/multi', { query: trimmed })
-  return mapResults(data.results)
+  if (wantTv && genre.tvId) {
+    const params = { with_genres: genre.tvId, sort_by: 'popularity.desc' }
+    if (yearValue) params.first_air_date_year = yearValue
+    requests.push(tmdbFetch('/discover/tv', params).then((data) => mapResults(data.results, 'tv')))
+  }
+
+  if (!requests.length) return []
+
+  const pages = await Promise.all(requests)
+  return pages.flat().sort((a, b) => b.popularity - a.popularity)
 }
 
 function pickTrailerUrl(videos) {
-  const clips = (videos?.results || []).filter((video) => video.site === 'YouTube')
+  const clips = (videos?.results || []).filter((video) => video.site === 'YouTube' && video.key)
   const trailer =
     clips.find((video) => video.type === 'Trailer' && video.official) ||
     clips.find((video) => video.type === 'Trailer') ||
-    clips.find((video) => video.type === 'Teaser')
+    clips.find((video) => video.type === 'Teaser') ||
+    clips.find((video) => video.type === 'Clip') ||
+    clips[0]
 
   return trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null
+}
+
+async function fetchTrailerUrl(mediaType, id, appendedVideos) {
+  const fromAppend = pickTrailerUrl(appendedVideos)
+  if (fromAppend) return fromAppend
+
+  try {
+    const videos = await tmdbFetch(`/${mediaType}/${id}/videos`, {
+      include_video_language: 'en-US,en,null',
+    })
+    return pickTrailerUrl(videos)
+  } catch {
+    return null
+  }
 }
 
 const OFFER_LABELS = {
@@ -118,17 +253,69 @@ const OFFER_LABELS = {
   buy: 'Buy',
 }
 
+const WATCH_REGION_STORAGE_KEY = 'movies.map.watchRegion'
+
+const FALLBACK_WATCH_REGION_CODES = [
+  'AD', 'AE', 'AG', 'AL', 'AR', 'AT', 'AU', 'AZ', 'BA', 'BB', 'BE', 'BG',
+  'BH', 'BM', 'BO', 'BR', 'BS', 'CA', 'CH', 'CL', 'CO', 'CR', 'CZ', 'DE',
+  'DK', 'DO', 'DZ', 'EC', 'EE', 'EG', 'ES', 'FI', 'FR', 'GB', 'GR', 'GT',
+  'HK', 'HN', 'HR', 'HU', 'ID', 'IE', 'IL', 'IN', 'IS', 'IT', 'JP', 'KE',
+  'KR', 'KW', 'LB', 'LT', 'LU', 'LV', 'MA', 'MX', 'MY', 'NG', 'NL', 'NO',
+  'NZ', 'OM', 'PA', 'PE', 'PH', 'PK', 'PL', 'PS', 'PT', 'PY', 'QA', 'RO',
+  'RS', 'RU', 'SA', 'SE', 'SG', 'SI', 'SK', 'SV', 'TH', 'TR', 'TW', 'UA',
+  'US', 'UY', 'VE', 'ZA',
+]
+
+const regionDisplayNames = typeof Intl !== 'undefined' && Intl.DisplayNames
+  ? new Intl.DisplayNames(['en'], { type: 'region' })
+  : null
+
+export function watchRegionName(code) {
+  if (!code) return ''
+  try {
+    return regionDisplayNames?.of(code) || code
+  } catch {
+    return code
+  }
+}
+
+function toWatchRegionOptions(codes) {
+  return [...new Set(codes.filter(Boolean))].map((code) => ({
+    code,
+    name: watchRegionName(code),
+  })).sort((a, b) => a.name.localeCompare(b.name, 'en'))
+}
+
+export function getFallbackWatchRegions() {
+  return toWatchRegionOptions(FALLBACK_WATCH_REGION_CODES)
+}
+
 function browserRegion() {
   const region = navigator.language?.split('-')[1]
   return region ? region.toUpperCase() : 'US'
 }
 
-function normalizeWatchProviders(watchProviders) {
-  const byRegion = watchProviders?.results || {}
-  const region =
-    [browserRegion(), 'US'].find((code) => byRegion[code]) || Object.keys(byRegion)[0]
-  const offers = region ? byRegion[region] : null
-  if (!offers) return null
+export function getSavedWatchRegion() {
+  try {
+    const saved = localStorage.getItem(WATCH_REGION_STORAGE_KEY)
+    if (saved && /^[A-Z]{2}$/.test(saved)) return saved
+  } catch {
+    // Ignore storage access errors (private mode, disabled cookies, etc.)
+  }
+
+  return browserRegion()
+}
+
+export function saveWatchRegion(region) {
+  try {
+    localStorage.setItem(WATCH_REGION_STORAGE_KEY, region)
+  } catch {
+    // Ignore storage access errors
+  }
+}
+
+function mapWatchOffers(offers) {
+  if (!offers) return { link: null, providers: [] }
 
   const providers = new Map()
 
@@ -151,15 +338,63 @@ function normalizeWatchProviders(watchProviders) {
   }
 
   return {
-    region,
     link: offers.link || null,
     providers: [...providers.values()],
   }
 }
 
+function normalizeWatchProviders(watchProviders) {
+  const byRegion = watchProviders?.results || {}
+  const regions = {}
+
+  for (const [code, offers] of Object.entries(byRegion)) {
+    regions[code.toUpperCase()] = mapWatchOffers(offers)
+  }
+
+  return regions
+}
+
+let watchRegionsPromise = null
+
+export async function getWatchRegions() {
+  if (!watchRegionsPromise) {
+    watchRegionsPromise = tmdbFetch('/watch/providers/regions')
+      .then((data) => {
+        const codes = (data.results || [])
+          .map((region) => region.iso_3166_1?.toUpperCase())
+          .filter(Boolean)
+
+        return toWatchRegionOptions(codes.length ? codes : FALLBACK_WATCH_REGION_CODES)
+      })
+      .catch(() => getFallbackWatchRegions())
+  }
+
+  return watchRegionsPromise
+}
+
+function mapRating(voteAverage, voteCount) {
+  return {
+    rating: voteAverage ? Math.round(voteAverage * 10) / 10 : null,
+    voteCount: voteCount || 0,
+  }
+}
+
+function mapCast(credits) {
+  return (credits?.cast || []).slice(0, CAST_LIMIT).map((member) => ({
+    id: member.id,
+    name: member.name,
+    character:
+      member.character ||
+      (member.roles || []).map((role) => role.character).filter(Boolean).join(', ') ||
+      null,
+    profilePath: member.profile_path,
+  }))
+}
+
 export async function getMovieDetails(id) {
   const data = await tmdbFetch(`/movie/${id}`, {
     append_to_response: 'credits,videos,watch/providers',
+    include_video_language: 'en-US,en,null',
   })
 
   return {
@@ -172,18 +407,56 @@ export async function getMovieDetails(id) {
     releaseDate: data.release_date || null,
     runtime: data.runtime || null,
     genres: (data.genres || []).map((genre) => genre.name),
-    rating: data.vote_average ? Math.round(data.vote_average * 10) / 10 : null,
-    voteCount: data.vote_count || 0,
+    ...mapRating(data.vote_average, data.vote_count),
     directors: (data.credits?.crew || [])
       .filter((member) => member.job === 'Director')
       .map((member) => member.name),
-    cast: (data.credits?.cast || []).slice(0, CAST_LIMIT).map((member) => ({
-      id: member.id,
-      name: member.name,
-      character: member.character || null,
-      profilePath: member.profile_path,
-    })),
-    trailerUrl: pickTrailerUrl(data.videos),
+    cast: mapCast(data.credits),
+    trailerUrl: await fetchTrailerUrl('movie', id, data.videos),
     watch: normalizeWatchProviders(data['watch/providers']),
   }
+}
+
+export async function getTvDetails(id) {
+  const data = await tmdbFetch(`/tv/${id}`, {
+    append_to_response: 'aggregate_credits,credits,videos,watch/providers',
+    include_video_language: 'en-US,en,null',
+  })
+
+  return {
+    id: data.id,
+    title: data.name || data.original_name || 'Untitled',
+    overview: data.overview || null,
+    posterPath: data.poster_path,
+    backdropPath: data.backdrop_path,
+    firstAirDate: data.first_air_date || null,
+    genres: (data.genres || []).map((genre) => genre.name),
+    ...mapRating(data.vote_average, data.vote_count),
+    createdBy: (data.created_by || []).map((person) => person.name),
+    seasons: (data.seasons || [])
+      .filter((season) => season.episode_count > 0)
+      .map((season) => ({
+        number: season.season_number,
+        name: season.name,
+        episodeCount: season.episode_count,
+      })),
+    cast: mapCast(
+      data.aggregate_credits?.cast?.length ? data.aggregate_credits : data.credits,
+    ),
+    trailerUrl: await fetchTrailerUrl('tv', id, data.videos),
+    watch: normalizeWatchProviders(data['watch/providers']),
+  }
+}
+
+export async function getTvSeason(showId, seasonNumber) {
+  const data = await tmdbFetch(`/tv/${showId}/season/${seasonNumber}`)
+
+  return (data.episodes || []).map((episode) => ({
+    id: episode.id,
+    number: episode.episode_number,
+    name: episode.name || `Episode ${episode.episode_number}`,
+    airDate: episode.air_date || null,
+    runtime: episode.runtime || null,
+    overview: episode.overview || null,
+  }))
 }

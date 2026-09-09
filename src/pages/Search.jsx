@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getImageUrl, searchTmdb } from '../api/tmdb.js'
+import { discoverByGenre, getImageUrl, getSearchGenres, searchTmdb } from '../api/tmdb.js'
 import './Search.css'
 
 const TYPE_OPTIONS = [
@@ -18,6 +18,7 @@ const TYPE_LABELS = {
 
 const DETAIL_PATHS = {
   movie: '/movie',
+  tv: '/tv',
 }
 
 function SearchResult({ item }) {
@@ -56,18 +57,51 @@ function Search() {
   const [year, setYear] = useState('')
   const [type, setType] = useState('all')
   const [releaseDateOn, setReleaseDateOn] = useState(false)
+  const [genreOn, setGenreOn] = useState(false)
+  const [genres, setGenres] = useState([])
+  const [genresStatus, setGenresStatus] = useState('idle')
+  const [selectedGenre, setSelectedGenre] = useState(null)
   const [results, setResults] = useState([])
   const [status, setStatus] = useState('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
   const yearDisabled = type === 'person'
+  const genreDisabled = type === 'person'
   const yearFilter = releaseDateOn ? year : ''
   const hasQuery = query.trim().length > 0
+  const hasLookup = hasQuery || Boolean(selectedGenre)
+
+  useEffect(() => {
+    if (!genreOn || genreDisabled) {
+      setGenres([])
+      setGenresStatus('idle')
+      return
+    }
+
+    let cancelled = false
+    setGenresStatus('loading')
+
+    getSearchGenres(type)
+      .then((list) => {
+        if (cancelled) return
+        setGenres(list)
+        setGenresStatus('success')
+      })
+      .catch(() => {
+        if (cancelled) return
+        setGenres([])
+        setGenresStatus('error')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [genreOn, genreDisabled, type])
 
   useEffect(() => {
     const trimmed = query.trim()
 
-    if (!trimmed) {
+    if (!trimmed && !selectedGenre) {
       setResults([])
       setStatus('idle')
       setErrorMessage('')
@@ -81,11 +115,18 @@ function Search() {
 
     const timer = setTimeout(async () => {
       try {
-        const data = await searchTmdb({
-          query: trimmed,
-          type,
-          year: yearFilter,
-        })
+        const data = trimmed
+          ? await searchTmdb({
+              query: trimmed,
+              type,
+              year: yearFilter,
+              genre: selectedGenre,
+            })
+          : await discoverByGenre({
+              genre: selectedGenre,
+              type,
+              year: yearFilter,
+            })
 
         if (cancelled) return
 
@@ -104,13 +145,15 @@ function Search() {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [query, type, yearFilter])
+  }, [query, type, yearFilter, selectedGenre])
 
   const selectType = (nextType) => {
     setType(nextType)
+    setSelectedGenre(null)
     if (nextType === 'person') {
       setReleaseDateOn(false)
       setYear('')
+      setGenreOn(false)
     }
   }
 
@@ -121,10 +164,21 @@ function Search() {
     })
   }
 
+  const toggleGenre = () => {
+    setGenreOn((on) => {
+      if (on) setSelectedGenre(null)
+      return !on
+    })
+  }
+
+  const selectGenre = (genre) => {
+    setSelectedGenre((current) => (current?.key === genre.key ? null : genre))
+  }
+
   return (
     <section
       id="search"
-      className={`snap-section search${hasQuery ? ' search--has-results' : ''}`}
+      className={`snap-section search${hasLookup || genreOn ? ' search--has-results' : ''}`}
       aria-label="Search"
     >
       <div className="search__panel">
@@ -190,6 +244,18 @@ function Search() {
             >
               Release date
             </button>
+            <button
+              type="button"
+              className={`search__chip${genreOn ? ' search__chip--active' : ''}`}
+              aria-pressed={genreOn}
+              disabled={genreDisabled}
+              title={
+                genreDisabled ? 'Genre does not apply to people' : 'Browse by genre'
+              }
+              onClick={toggleGenre}
+            >
+              Genre
+            </button>
           </div>
 
           {releaseDateOn && (
@@ -207,9 +273,37 @@ function Search() {
               autoFocus
             />
           )}
+
+          {genreOn && (
+            <div className="search__genres" role="group" aria-label="Genres">
+              {genresStatus === 'loading' && (
+                <p className="search__status">Loading genres…</p>
+              )}
+              {genresStatus === 'error' && (
+                <p className="search__status search__status--error" role="alert">
+                  Could not load genres.
+                </p>
+              )}
+              {genres.map((genre) => (
+                <button
+                  key={genre.key}
+                  type="button"
+                  className={`search__genre${
+                    selectedGenre?.key === genre.key ? ' search__genre--active' : ''
+                  }`}
+                  aria-pressed={selectedGenre?.key === genre.key}
+                  onClick={() => selectGenre(genre)}
+                >
+                  {genre.tag}
+                </button>
+              ))}
+            </div>
+          )}
         </form>
 
-        {status === 'loading' && <p className="search__status">Searching…</p>}
+        {status === 'loading' && (
+          <p className="search__status">{hasQuery ? 'Searching…' : 'Loading…'}</p>
+        )}
         {status === 'error' && (
           <p className="search__status search__status--error" role="alert">
             {errorMessage}

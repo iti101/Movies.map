@@ -15,7 +15,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: min(40rem, 90vw);
+  width: min(46rem, 92vw);
   gap: 1.25rem;
 }
 
@@ -158,6 +158,43 @@
 
 .search__year:focus {
   border-color: rgba(200, 210, 225, 0.45);
+}
+
+.search__genres {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.search__genres .search__status {
+  width: 100%;
+}
+
+.search__genre {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid rgba(180, 190, 205, 0.28);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(232, 234, 237, 0.88);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.search__genre:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(200, 210, 225, 0.45);
+}
+
+.search__genre--active {
+  background: rgba(74, 85, 99, 0.85);
+  border-color: rgba(200, 210, 225, 0.4);
+  color: #f4f6f8;
 }
 
 .search__status {
