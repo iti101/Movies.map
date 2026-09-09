@@ -8,6 +8,8 @@ import {
   MEDIA_LABELS,
   searchTmdb,
 } from '../api/tmdb.js'
+import DidYouMean from '../components/DidYouMean.jsx'
+import { useDidYouMean } from '../hooks/useDidYouMean.js'
 import './Search.css'
 
 const TYPE_OPTIONS = [
@@ -145,6 +147,8 @@ function Search() {
       clearTimeout(timer)
     }
   }, [query, type, yearFilter, selectedGenre])
+
+  const suggestion = useDidYouMean({ query, type, results, status })
 
   const selectType = (nextType) => {
     setType(nextType)
@@ -335,6 +339,8 @@ function Search() {
             {status === 'success' && results.length === 0 && (
               <p className="search__status">No results found.</p>
             )}
+
+            <DidYouMean suggestion={suggestion} onAccept={setQuery} />
 
             {hasResults && (
               <ul className="search__results">

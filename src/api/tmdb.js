@@ -193,6 +193,64 @@ export async function getSearchGenres(type = 'all') {
   return [...byTag.values()]
 }
 
+const spellingSuggestionCache = new Map()
+
+/** Builds the prefix used to probe TMDB when the exact query returns nothing. */
+function suggestionPrefix(query) {
+  return query.slice(0, Math.max(3, Math.ceil(query.length * 0.6)))
+}
+
+/**
+ * Candidate titles/names for a "Did you mean…?" correction.
+ *
+ * TMDB's search matches word prefixes but is NOT typo tolerant, so a misspelling
+ * like "avengrs" returns zero results. We probe with a shortened prefix of the
+ * query ("aveng") to surface likely-intended titles, returning each with its
+ * popularity so the caller can rank canonical titles above obscure look-alikes.
+ *
+ * @param {string} query
+ * @param {'all' | 'movie' | 'tv' | 'person'} [type]
+ * @returns {Promise<Array<{ value: string, weight: number }>>}
+ */
+export async function getSpellingSuggestions(query, type = 'all') {
+  const trimmed = String(query ?? '').trim()
+  if (trimmed.length < 4) return []
+
+  const prefix = suggestionPrefix(trimmed)
+  const cacheKey = `${type || 'all'}:${prefix.toLowerCase()}`
+  const cached = spellingSuggestionCache.get(cacheKey)
+  if (cached) return cached
+
+  const endpoint = SEARCH_ENDPOINTS[type]
+
+  const promise = (async () => {
+    const data = endpoint
+      ? await tmdbFetch(endpoint.path, { query: prefix })
+      : await tmdbFetch('/search/multi', { query: prefix })
+
+    const byTitle = new Map()
+
+    for (const item of data.results || []) {
+      const mediaType = item.media_type || type
+      const title = mediaType === 'person' ? item.name : item.title || item.name
+      const value = String(title ?? '').trim()
+      if (!value) continue
+
+      const weight = item.popularity ?? 0
+      const existing = byTitle.get(value)
+      if (existing === undefined || weight > existing) byTitle.set(value, weight)
+    }
+
+    return [...byTitle.entries()].map(([value, weight]) => ({ value, weight }))
+  })().catch((error) => {
+    spellingSuggestionCache.delete(cacheKey)
+    throw error
+  })
+
+  spellingSuggestionCache.set(cacheKey, promise)
+  return promise
+}
+
 export async function discoverByGenre({ genre, type = 'all', year = '' }) {
   if (!genre) return []
 

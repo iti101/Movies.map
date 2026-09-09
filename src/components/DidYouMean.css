@@ -1,0 +1,30 @@
+.did-you-mean {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: rgba(244, 241, 234, 0.8);
+  text-align: center;
+}
+
+.did-you-mean__btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #9ec5ff;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
+.did-you-mean__btn:hover,
+.did-you-mean__btn:focus-visible {
+  color: #c5dbff;
+}
+
+.did-you-mean__btn:focus-visible {
+  outline: 2px solid rgba(158, 197, 255, 0.55);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
