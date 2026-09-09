@@ -1,10 +1,12 @@
 import { useEffect, useId, useState } from 'react'
-import { useMatch, useNavigate, useParams } from 'react-router-dom'
+import { Link, useMatch, useNavigate, useParams } from 'react-router-dom'
 import Select from '../components/Select.jsx'
+import MovieCard from '../components/MovieCard.jsx'
 import {
   getFallbackWatchRegions,
   getImageUrl,
   getMovieDetails,
+  getPersonDetails,
   getSavedWatchRegion,
   getTvDetails,
   getTvSeason,
@@ -12,7 +14,10 @@ import {
   saveWatchRegion,
   watchRegionName,
 } from '../api/tmdb.js'
+import { useAsyncResource } from '../hooks/useAsyncResource.js'
 import './DetailPage.css'
+
+const KNOWN_FOR_LIMIT = 10
 
 function formatReleaseDate(value) {
   if (!value) return null
@@ -204,7 +209,7 @@ function CastSection({ cast }) {
 
           return (
             <li key={member.id}>
-              <button type="button" className="detail__cast-card">
+              <Link to={`/person/${member.id}`} className="detail__cast-card">
                 {profileUrl ? (
                   <img
                     className="detail__cast-photo"
@@ -224,7 +229,7 @@ function CastSection({ cast }) {
                 {member.character && (
                   <span className="detail__cast-role">{member.character}</span>
                 )}
-              </button>
+              </Link>
             </li>
           )
         })}
@@ -454,41 +459,104 @@ function TvDetail({ show }) {
   )
 }
 
+function PersonPhoto({ name, profilePath }) {
+  const photoUrl = getImageUrl(profilePath, 'w500')
+
+  if (!photoUrl) {
+    return <div className="detail__poster detail__poster--placeholder">No photo</div>
+  }
+
+  return <img className="detail__poster" src={photoUrl} alt={name} />
+}
+
+function KnownForSection({ personId, movies }) {
+  if (!movies.length) return null
+
+  const topMovies = movies.slice(0, KNOWN_FOR_LIMIT)
+  const hasMore = movies.length > KNOWN_FOR_LIMIT
+
+  return (
+    <section className="detail__section">
+      <div className="detail__section-header detail__section-header--spread">
+        <h2 className="detail__section-title">Known for…</h2>
+        {hasMore && (
+          <Link className="detail__see-all" to={`/person/${personId}/movies`}>
+            See all <span aria-hidden="true">→</span>
+          </Link>
+        )}
+      </div>
+
+      <ul className="detail__movie-grid">
+        {topMovies.map((movie) => (
+          <li key={movie.id}>
+            <MovieCard item={movie} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function PersonDetail({ person }) {
+  const born = formatReleaseDate(person.birthday)
+  const died = formatReleaseDate(person.deathday)
+  const facts = [
+    born && { label: 'Date of birth', value: born },
+    died && { label: 'Died', value: died },
+    person.placeOfBirth && { label: 'Place of birth', value: person.placeOfBirth },
+  ].filter(Boolean)
+
+  return (
+    <>
+      <div className="detail__header">
+        <PersonPhoto name={person.name} profilePath={person.profilePath} />
+
+        <div className="detail__intro">
+          <h1 className="detail__title">{person.name}</h1>
+          {facts.length > 0 && <FactList facts={facts} />}
+
+          <div className="detail__awards">
+            <p className="detail__awards-label">Awards</p>
+            <p className="detail__awards-text">
+              {person.awards || 'No awards information available.'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <section className="detail__section">
+        <h2 className="detail__section-title">Biography</h2>
+        <p className="detail__text detail__text--bio">
+          {person.biography || 'No biography available yet.'}
+        </p>
+      </section>
+
+      <KnownForSection personId={person.id} movies={person.movies} />
+    </>
+  )
+}
+
+function loadDetails(mediaType, id) {
+  if (mediaType === 'person') return getPersonDetails(id)
+  if (mediaType === 'tv') return getTvDetails(id)
+  return getMovieDetails(id)
+}
+
 function DetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const isPerson = Boolean(useMatch('/person/:id'))
   const isTv = Boolean(useMatch('/tv/:id'))
-  const [item, setItem] = useState(null)
-  const [status, setStatus] = useState('loading')
-  const [errorMessage, setErrorMessage] = useState('')
+  const mediaType = isPerson ? 'person' : isTv ? 'tv' : 'movie'
+
+  const { data: item, status, errorMessage } = useAsyncResource(
+    () => loadDetails(mediaType, id),
+    [id, mediaType],
+  )
 
   useEffect(() => {
-    let cancelled = false
-
-    setStatus('loading')
-    setItem(null)
-    setErrorMessage('')
     window.scrollTo(0, 0)
-
-    const load = isTv ? getTvDetails(id) : getMovieDetails(id)
-
-    load
-      .then((data) => {
-        if (cancelled) return
-        setItem(data)
-        setStatus('success')
-      })
-      .catch((error) => {
-        if (cancelled) return
-        setItem(null)
-        setStatus('error')
-        setErrorMessage(error.message || 'Something went wrong.')
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [id, isTv])
+  }, [id, mediaType])
 
   const backdropUrl = getImageUrl(item?.backdropPath, 'w1280')
 
@@ -514,7 +582,9 @@ function DetailPage() {
           </p>
         )}
         {item &&
-          (isTv ? (
+          (isPerson ? (
+            <PersonDetail key={item.id} person={item} />
+          ) : isTv ? (
             <TvDetail key={item.id} show={item} />
           ) : (
             <MovieDetail key={item.id} movie={item} />

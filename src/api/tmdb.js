@@ -56,6 +56,17 @@ export function getImageUrl(path, size = 'w185') {
   return `${IMAGE_BASE}/${size}${path}`
 }
 
+export const MEDIA_LABELS = {
+  movie: 'Movie',
+  tv: 'TV',
+  person: 'Person',
+}
+
+export function detailPath(mediaType, id) {
+  if (!MEDIA_LABELS[mediaType]) return null
+  return `/${mediaType}/${id}`
+}
+
 function mapResults(results, mediaType) {
   return (results || []).map((item) => normalizeItem(item, mediaType)).filter(Boolean)
 }
@@ -139,34 +150,25 @@ function mapGenreList(genres, mediaType) {
   }))
 }
 
-let movieGenresPromise = null
-let tvGenresPromise = null
+function createGenreLoader(path, mediaType) {
+  let promise = null
 
-function getMovieGenres() {
-  if (!movieGenresPromise) {
-    movieGenresPromise = tmdbFetch('/genre/movie/list')
-      .then((data) => mapGenreList(data.genres, 'movie'))
-      .catch((error) => {
-        movieGenresPromise = null
-        throw error
-      })
+  return function loadGenres() {
+    if (!promise) {
+      promise = tmdbFetch(path)
+        .then((data) => mapGenreList(data.genres, mediaType))
+        .catch((error) => {
+          promise = null
+          throw error
+        })
+    }
+
+    return promise
   }
-
-  return movieGenresPromise
 }
 
-function getTvGenres() {
-  if (!tvGenresPromise) {
-    tvGenresPromise = tmdbFetch('/genre/tv/list')
-      .then((data) => mapGenreList(data.genres, 'tv'))
-      .catch((error) => {
-        tvGenresPromise = null
-        throw error
-      })
-  }
-
-  return tvGenresPromise
-}
+const getMovieGenres = createGenreLoader('/genre/movie/list', 'movie')
+const getTvGenres = createGenreLoader('/genre/tv/list', 'tv')
 
 export async function getSearchGenres(type = 'all') {
   if (type === 'tv') return getTvGenres()
@@ -445,6 +447,50 @@ export async function getTvDetails(id) {
     ),
     trailerUrl: await fetchTrailerUrl('tv', id, data.videos),
     watch: normalizeWatchProviders(data['watch/providers']),
+  }
+}
+
+function mapPersonMovies(credits) {
+  const byMovie = new Map()
+
+  for (const credit of credits?.cast || []) {
+    if (!credit.id) continue
+
+    const movie = {
+      id: credit.id,
+      mediaType: 'movie',
+      title: credit.title || credit.original_title || 'Untitled',
+      imagePath: credit.poster_path,
+      date: credit.release_date || null,
+      popularity: credit.popularity ?? 0,
+    }
+
+    const existing = byMovie.get(credit.id)
+    if (!existing || movie.popularity > existing.popularity) {
+      byMovie.set(credit.id, movie)
+    }
+  }
+
+  return [...byMovie.values()].sort((a, b) => b.popularity - a.popularity)
+}
+
+export async function getPersonDetails(id) {
+  const data = await tmdbFetch(`/person/${id}`, {
+    append_to_response: 'movie_credits',
+  })
+
+  return {
+    id: data.id,
+    name: data.name || 'Unknown',
+    biography: data.biography || null,
+    profilePath: data.profile_path,
+    birthday: data.birthday || null,
+    deathday: data.deathday || null,
+    placeOfBirth: data.place_of_birth || null,
+    knownForDepartment: data.known_for_department || null,
+    // TMDB does not expose awards data, so this stays null for now.
+    awards: null,
+    movies: mapPersonMovies(data.movie_credits),
   }
 }
 

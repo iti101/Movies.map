@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { discoverByGenre, getImageUrl, getSearchGenres, searchTmdb } from '../api/tmdb.js'
+import {
+  detailPath,
+  discoverByGenre,
+  getImageUrl,
+  getSearchGenres,
+  MEDIA_LABELS,
+  searchTmdb,
+} from '../api/tmdb.js'
 import './Search.css'
 
 const TYPE_OPTIONS = [
@@ -10,21 +17,9 @@ const TYPE_OPTIONS = [
   { id: 'person', label: 'People' },
 ]
 
-const TYPE_LABELS = {
-  movie: 'Movie',
-  tv: 'TV',
-  person: 'Person',
-}
-
-const DETAIL_PATHS = {
-  movie: '/movie',
-  tv: '/tv',
-}
-
 function SearchResult({ item }) {
   const imageUrl = getImageUrl(item.imagePath)
-  const path = DETAIL_PATHS[item.mediaType]
-  const href = path ? `${path}/${item.id}` : null
+  const href = detailPath(item.mediaType, item.id)
   const Wrapper = href ? Link : 'div'
 
   return (
@@ -43,7 +38,7 @@ function SearchResult({ item }) {
         <div className="search__meta">
           <p className="search__result-title">{item.title}</p>
           <p className="search__result-details">
-            {TYPE_LABELS[item.mediaType] || item.mediaType}
+            {MEDIA_LABELS[item.mediaType] || item.mediaType}
             {item.date ? ` · ${item.date}` : ''}
           </p>
         </div>
@@ -70,6 +65,10 @@ function Search() {
   const yearFilter = releaseDateOn ? year : ''
   const hasQuery = query.trim().length > 0
   const hasLookup = hasQuery || Boolean(selectedGenre)
+  const hasResults = status === 'success' && results.length > 0
+  const resultsLabel = hasQuery
+    ? `“${query.trim()}”`
+    : selectedGenre?.tag || 'All results'
 
   useEffect(() => {
     if (!genreOn || genreDisabled) {
@@ -300,27 +299,53 @@ function Search() {
             </div>
           )}
         </form>
-
-        {status === 'loading' && (
-          <p className="search__status">{hasQuery ? 'Searching…' : 'Loading…'}</p>
-        )}
-        {status === 'error' && (
-          <p className="search__status search__status--error" role="alert">
-            {errorMessage}
-          </p>
-        )}
-        {status === 'success' && results.length === 0 && (
-          <p className="search__status">No results found.</p>
-        )}
-
-        {status === 'success' && results.length > 0 && (
-          <ul className="search__results">
-            {results.map((item) => (
-              <SearchResult key={`${item.mediaType}-${item.id}`} item={item} />
-            ))}
-          </ul>
-        )}
       </div>
+
+      {status !== 'idle' && (
+        <div className={`search__results-wrap${hasResults ? ' search__results-wrap--filled' : ''}`}>
+          {hasResults && (
+            <div className="search__results-header">
+              <span className="search__results-count">
+                {results.length} {results.length === 1 ? 'result' : 'results'}
+              </span>
+              <Link
+                className="search__see-all"
+                to="/search"
+                state={{ results, label: resultsLabel }}
+                aria-label="See all results on a new page"
+              >
+                See all <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+          )}
+
+          <section
+            className="search__results-pane"
+            aria-label="Search results"
+            aria-live="polite"
+          >
+            {status === 'loading' && (
+              <p className="search__status">{hasQuery ? 'Searching…' : 'Loading…'}</p>
+            )}
+            {status === 'error' && (
+              <p className="search__status search__status--error" role="alert">
+                {errorMessage}
+              </p>
+            )}
+            {status === 'success' && results.length === 0 && (
+              <p className="search__status">No results found.</p>
+            )}
+
+            {hasResults && (
+              <ul className="search__results">
+                {results.map((item) => (
+                  <SearchResult key={`${item.mediaType}-${item.id}`} item={item} />
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      )}
     </section>
   )
 }
