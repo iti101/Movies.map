@@ -1,5 +1,3 @@
-import './Login.css'
-
 function Login() {
   return (
     <section className="snap-section login" aria-label="Log in">

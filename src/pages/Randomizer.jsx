@@ -1,5 +1,3 @@
-import './Randomizer.css'
-
 function Randomizer() {
   return (
     <section className="snap-section randomizer" aria-label="Randomizer">

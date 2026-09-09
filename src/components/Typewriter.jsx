@@ -88,7 +88,7 @@ function Typewriter() {
 
   return (
     <h1 className="typewriter section-title" aria-label={FINAL}>
-      <span className="typewriter__text">{text}</span>
+      {text}
       {showCursor && (
         <span className="typewriter__cursor" aria-hidden="true">
           |

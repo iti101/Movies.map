@@ -1,6 +1,7 @@
 const BASE_URL = 'https://api.themoviedb.org/3'
-const IMAGE_BASE = 'https://image.tmdb.org/t/p/w185'
+const IMAGE_BASE = 'https://image.tmdb.org/t/p'
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY
+const CAST_LIMIT = 12
 
 async function tmdbFetch(path, params = {}) {
   if (!API_KEY) {
@@ -49,9 +50,19 @@ function normalizeItem(item, mediaType) {
   }
 }
 
-export function getImageUrl(path) {
+export function getImageUrl(path, size = 'w185') {
   if (!path) return null
-  return `${IMAGE_BASE}${path}`
+  return `${IMAGE_BASE}/${size}${path}`
+}
+
+function mapResults(results, mediaType) {
+  return (results || []).map((item) => normalizeItem(item, mediaType)).filter(Boolean)
+}
+
+const SEARCH_ENDPOINTS = {
+  movie: { path: '/search/movie', yearKey: 'primary_release_year' },
+  tv: { path: '/search/tv', yearKey: 'first_air_date_year' },
+  person: { path: '/search/person' },
 }
 
 export async function searchTmdb({ query, type = 'all', year = '' }) {
@@ -60,34 +71,14 @@ export async function searchTmdb({ query, type = 'all', year = '' }) {
 
   const yearValue = year.trim()
 
-  if (type === 'movie') {
-    const data = await tmdbFetch('/search/movie', {
-      query: trimmed,
-      primary_release_year: yearValue || undefined,
-    })
-    return (data.results || [])
-      .map((item) => normalizeItem(item, 'movie'))
-      .filter(Boolean)
+  if (type !== 'all') {
+    const endpoint = SEARCH_ENDPOINTS[type]
+    const params = { query: trimmed }
+    if (endpoint.yearKey && yearValue) params[endpoint.yearKey] = yearValue
+    const data = await tmdbFetch(endpoint.path, params)
+    return mapResults(data.results, type)
   }
 
-  if (type === 'tv') {
-    const data = await tmdbFetch('/search/tv', {
-      query: trimmed,
-      first_air_date_year: yearValue || undefined,
-    })
-    return (data.results || [])
-      .map((item) => normalizeItem(item, 'tv'))
-      .filter(Boolean)
-  }
-
-  if (type === 'person') {
-    const data = await tmdbFetch('/search/person', { query: trimmed })
-    return (data.results || [])
-      .map((item) => normalizeItem(item, 'person'))
-      .filter(Boolean)
-  }
-
-  // type === 'all'
   if (yearValue) {
     const [movies, shows] = await Promise.all([
       tmdbFetch('/search/movie', {
@@ -100,16 +91,99 @@ export async function searchTmdb({ query, type = 'all', year = '' }) {
       }),
     ])
 
-    const combined = [
-      ...(movies.results || []).map((item) => normalizeItem(item, 'movie')),
-      ...(shows.results || []).map((item) => normalizeItem(item, 'tv')),
-    ].filter(Boolean)
-
-    return combined.sort((a, b) => b.popularity - a.popularity)
+    return [...mapResults(movies.results, 'movie'), ...mapResults(shows.results, 'tv')].sort(
+      (a, b) => b.popularity - a.popularity,
+    )
   }
 
   const data = await tmdbFetch('/search/multi', { query: trimmed })
-  return (data.results || [])
-    .map((item) => normalizeItem(item))
-    .filter(Boolean)
+  return mapResults(data.results)
+}
+
+function pickTrailerUrl(videos) {
+  const clips = (videos?.results || []).filter((video) => video.site === 'YouTube')
+  const trailer =
+    clips.find((video) => video.type === 'Trailer' && video.official) ||
+    clips.find((video) => video.type === 'Trailer') ||
+    clips.find((video) => video.type === 'Teaser')
+
+  return trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null
+}
+
+const OFFER_LABELS = {
+  flatrate: 'Stream',
+  free: 'Free',
+  ads: 'Free with ads',
+  rent: 'Rent',
+  buy: 'Buy',
+}
+
+function browserRegion() {
+  const region = navigator.language?.split('-')[1]
+  return region ? region.toUpperCase() : 'US'
+}
+
+function normalizeWatchProviders(watchProviders) {
+  const byRegion = watchProviders?.results || {}
+  const region =
+    [browserRegion(), 'US'].find((code) => byRegion[code]) || Object.keys(byRegion)[0]
+  const offers = region ? byRegion[region] : null
+  if (!offers) return null
+
+  const providers = new Map()
+
+  for (const [offerType, label] of Object.entries(OFFER_LABELS)) {
+    for (const provider of offers[offerType] || []) {
+      const known = providers.get(provider.provider_id)
+
+      if (known) {
+        known.offers.push(label)
+        continue
+      }
+
+      providers.set(provider.provider_id, {
+        id: provider.provider_id,
+        name: provider.provider_name,
+        logoPath: provider.logo_path,
+        offers: [label],
+      })
+    }
+  }
+
+  return {
+    region,
+    link: offers.link || null,
+    providers: [...providers.values()],
+  }
+}
+
+export async function getMovieDetails(id) {
+  const data = await tmdbFetch(`/movie/${id}`, {
+    append_to_response: 'credits,videos,watch/providers',
+  })
+
+  return {
+    id: data.id,
+    title: data.title || data.original_title || 'Untitled',
+    tagline: data.tagline || null,
+    overview: data.overview || null,
+    posterPath: data.poster_path,
+    backdropPath: data.backdrop_path,
+    releaseDate: data.release_date || null,
+    runtime: data.runtime || null,
+    genres: (data.genres || []).map((genre) => genre.name),
+    rating: data.vote_average ? Math.round(data.vote_average * 10) / 10 : null,
+    voteCount: data.vote_count || 0,
+    directors: (data.credits?.crew || [])
+      .filter((member) => member.job === 'Director')
+      .map((member) => member.name),
+    cast: (data.credits?.cast || []).slice(0, CAST_LIMIT).map((member) => ({
+      id: member.id,
+      name: member.name,
+      character: member.character || null,
+      profilePath: member.profile_path,
+    })),
+    trailerUrl: pickTrailerUrl(data.videos),
+    watch: normalizeWatchProviders(data['watch/providers']),
+  }
 }

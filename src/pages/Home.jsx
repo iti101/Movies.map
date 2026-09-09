@@ -1,22 +1,20 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
+import { scrollToSection } from '../scrollToSection.js'
 import Hero from './Hero.jsx'
 import Search from './Search.jsx'
 import Contact from './Contact.jsx'
 
 function Home() {
-  const location = useLocation()
+  const { state } = useLocation()
 
   useEffect(() => {
-    const sectionId = location.state?.scrollTo
+    const sectionId = state?.scrollTo
     if (!sectionId) return
 
-    const frame = requestAnimationFrame(() => {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' })
-    })
-
+    const frame = requestAnimationFrame(() => scrollToSection(sectionId))
     return () => cancelAnimationFrame(frame)
-  }, [location.state])
+  }, [state])
 
   return (
     <div className="scroll-container">

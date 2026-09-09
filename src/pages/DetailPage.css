@@ -1,0 +1,354 @@
+.detail {
+  --detail-text: #f4f1ea;
+  --detail-muted: rgba(244, 241, 234, 0.7);
+  --detail-faint: rgba(244, 241, 234, 0.55);
+  --detail-card: rgba(0, 0, 0, 0.22);
+  --detail-border: rgba(180, 190, 205, 0.28);
+  --detail-border-hover: rgba(200, 210, 225, 0.45);
+
+  position: relative;
+  min-height: 100vh;
+  padding: 5.5rem 1.5rem 4rem;
+  background: var(--color-search);
+  color: var(--detail-text);
+}
+
+.detail__backdrop {
+  position: absolute;
+  inset: 0 0 auto;
+  height: min(32rem, 60vh);
+  background-size: cover;
+  background-position: center 20%;
+  opacity: 0.35;
+  mask-image: linear-gradient(to bottom, #000, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent);
+}
+
+.detail__content {
+  position: relative;
+  width: min(64rem, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.detail__back,
+.detail__provider {
+  border: 1px solid var(--detail-border);
+  background: var(--detail-card);
+  color: inherit;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.detail__back:hover,
+.detail__provider:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--detail-border-hover);
+}
+
+.detail__back {
+  align-self: flex-start;
+  padding: 0.4rem 0.95rem;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.detail__status {
+  margin: 2rem 0;
+  text-align: center;
+  font-size: 1rem;
+  color: rgba(244, 241, 234, 0.8);
+}
+
+.detail__status--error {
+  color: #ffb4a8;
+}
+
+.detail__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+}
+
+.detail__poster,
+.detail__cast-photo {
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  background: rgba(244, 241, 234, 0.12);
+}
+
+.detail__poster {
+  width: min(17rem, 34vw);
+  border-radius: 1rem;
+  box-shadow: 0 1.25rem 2.5rem rgba(0, 0, 0, 0.45);
+  flex-shrink: 0;
+}
+
+.detail__poster--placeholder,
+.detail__cast-photo--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--detail-faint);
+}
+
+.detail__poster--placeholder {
+  font-size: 0.9rem;
+}
+
+.detail__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.detail__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+}
+
+.detail__tagline {
+  font-size: 1.05rem;
+  font-style: italic;
+  color: rgba(244, 241, 234, 0.75);
+}
+
+.detail__facts {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.detail__fact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.detail__fact dt {
+  min-width: 7rem;
+  color: rgba(244, 241, 234, 0.6);
+}
+
+.detail__fact dd {
+  font-weight: 600;
+}
+
+.detail__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.9rem;
+  margin-top: 0.25rem;
+  flex: 1;
+}
+
+.detail__rating {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.detail__rating-score {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.detail__rating-meta,
+.detail__rating--empty,
+.detail__cast-role,
+.detail__provider-offers {
+  color: var(--detail-muted);
+}
+
+.detail__rating-meta {
+  font-size: 0.85rem;
+}
+
+.detail__rating--empty {
+  font-size: 0.95rem;
+}
+
+.detail__trailer {
+  display: inline-flex;
+  align-items: center;
+  margin-top: auto;
+  padding: 0.65rem 1.35rem;
+  border-radius: 999px;
+  background: #4a5563;
+  color: #f4f6f8;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.detail__trailer:hover {
+  background: #5b6775;
+}
+
+.detail__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.detail__section-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.detail__text {
+  max-width: 46rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgba(244, 241, 234, 0.85);
+}
+
+.detail__cast {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 1rem;
+}
+
+.detail__cast-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.85rem;
+  background: var(--detail-card);
+  color: inherit;
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.detail__cast-card:hover {
+  transform: translateY(-0.2rem);
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(200, 210, 225, 0.35);
+}
+
+.detail__cast-card:focus-visible {
+  outline: 2px solid rgba(244, 246, 248, 0.55);
+  outline-offset: 2px;
+}
+
+.detail__cast-photo {
+  width: 100%;
+  border-radius: 0.55rem;
+}
+
+.detail__cast-photo--placeholder {
+  font-size: 0.7rem;
+}
+
+.detail__cast-name,
+.detail__provider-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.detail__cast-name {
+  line-height: 1.25;
+}
+
+.detail__cast-role {
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+.detail__providers {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.detail__provider {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.5rem 0.95rem 0.5rem 0.55rem;
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+.detail__provider-logo {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  object-fit: cover;
+}
+
+.detail__provider-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail__provider-offers {
+  font-size: 0.75rem;
+}
+
+.detail__providers-note {
+  font-size: 0.8rem;
+  color: var(--detail-faint);
+}
+
+@media (max-width: 40rem) {
+  .detail {
+    padding: 5rem 1.15rem 3rem;
+  }
+
+  .detail__header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .detail__poster {
+    width: min(15rem, 60vw);
+  }
+
+  .detail__intro {
+    align-items: center;
+  }
+
+  .detail__fact {
+    justify-content: center;
+  }
+
+  .detail__fact dt {
+    min-width: 0;
+  }
+
+  .detail__actions {
+    flex: none;
+    align-items: center;
+  }
+
+  .detail__trailer {
+    margin-top: 0;
+  }
+}

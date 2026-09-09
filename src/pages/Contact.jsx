@@ -1,5 +1,3 @@
-import './Contact.css'
-
 function Contact() {
   return (
     <section id="contact" className="snap-section contact" aria-label="Contact">

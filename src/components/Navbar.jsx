@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import loginIcon from '../assets/ICON-login-user-account.svg'
+import { scrollToSection } from '../scrollToSection.js'
 import './Navbar.css'
 
-const SECTION_ITEMS = [
+const MENU_ITEMS = [
   { label: 'Home', sectionId: 'hero' },
   { label: 'Search', sectionId: 'search' },
+  { label: 'Randomizer', to: '/randomizer' },
+  { label: 'Log-in', to: '/login' },
 ]
+
+const menuLinkClass = ({ isActive }) =>
+  `navbar__menu-link${isActive ? ' navbar__menu-link--active' : ''}`
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -18,19 +24,19 @@ function Navbar() {
   useEffect(() => {
     if (!isOpen) return
 
-    const handleKeyDown = (event) => {
+    const onKeyDown = (event) => {
       if (event.key === 'Escape') closeMenu()
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
   }, [isOpen])
 
   const goToSection = (sectionId) => {
     closeMenu()
 
     if (pathname === '/') {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' })
+      scrollToSection(sectionId)
       return
     }
 
@@ -63,39 +69,23 @@ function Navbar() {
       >
         <nav aria-label="Main navigation">
           <ul className="navbar__menu-list">
-            {SECTION_ITEMS.map((item) => (
-              <li key={item.sectionId}>
-                <button
-                  type="button"
-                  className="navbar__menu-link"
-                  onClick={() => goToSection(item.sectionId)}
-                >
-                  {item.label}
-                </button>
+            {MENU_ITEMS.map((item) => (
+              <li key={item.label}>
+                {item.to ? (
+                  <NavLink to={item.to} className={menuLinkClass} onClick={closeMenu}>
+                    {item.label}
+                  </NavLink>
+                ) : (
+                  <button
+                    type="button"
+                    className="navbar__menu-link"
+                    onClick={() => goToSection(item.sectionId)}
+                  >
+                    {item.label}
+                  </button>
+                )}
               </li>
             ))}
-            <li>
-              <NavLink
-                to="/randomizer"
-                className={({ isActive }) =>
-                  `navbar__menu-link${isActive ? ' navbar__menu-link--active' : ''}`
-                }
-                onClick={closeMenu}
-              >
-                Randomizer
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/login"
-                className={({ isActive }) =>
-                  `navbar__menu-link${isActive ? ' navbar__menu-link--active' : ''}`
-                }
-                onClick={closeMenu}
-              >
-                Log-in
-              </NavLink>
-            </li>
           </ul>
         </nav>
       </div>
