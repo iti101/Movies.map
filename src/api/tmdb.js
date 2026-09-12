@@ -279,6 +279,156 @@ export async function discoverByGenre({ genre, type = 'all', year = '' }) {
   return pages.flat().sort((a, b) => b.popularity - a.popularity)
 }
 
+function shuffle(items) {
+  const list = [...items]
+  for (let i = list.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[list[i], list[j]] = [list[j], list[i]]
+  }
+  return list
+}
+
+function genreIdForType(genre, type) {
+  return type === 'tv' ? genre.tvId : genre.movieId
+}
+
+function genreIdsForType(genres, type) {
+  return [...new Set(genres.map((genre) => genreIdForType(genre, type)).filter(Boolean))]
+}
+
+function matchesIncludeGenres(item, includeIds) {
+  if (!includeIds.length) return true
+  return includeIds.some((id) => item.genreIds.includes(id))
+}
+
+function matchesExcludeGenres(item, excludeIds) {
+  if (!excludeIds.length) return true
+  return !excludeIds.some((id) => item.genreIds.includes(id))
+}
+
+function pickPersonMatch(results, query) {
+  const normalized = query.toLowerCase()
+  const exact = results.find((person) => person.name?.toLowerCase() === normalized)
+  if (exact) return exact
+
+  const startsWith = results.find((person) =>
+    person.name?.toLowerCase().startsWith(normalized),
+  )
+  if (startsWith) return startsWith
+
+  return results[0] || null
+}
+
+async function resolvePersonId(personName) {
+  const trimmed = String(personName ?? '').trim()
+  if (!trimmed) return null
+
+  const people = await tmdbFetch('/search/person', { query: trimmed })
+  const person = pickPersonMatch(people.results || [], trimmed)
+  if (!person?.id) {
+    const error = new Error(`No person found for “${trimmed}”.`)
+    error.code = 'PERSON_NOT_FOUND'
+    throw error
+  }
+
+  return person.id
+}
+
+function mapPersonCredits(credits, type) {
+  const byId = new Map()
+
+  for (const list of [credits?.cast || [], credits?.crew || []]) {
+    for (const credit of list) {
+      const item = normalizeItem(credit, type)
+      if (!item) continue
+
+      const existing = byId.get(item.id)
+      if (!existing || item.popularity > existing.popularity) {
+        byId.set(item.id, item)
+      }
+    }
+  }
+
+  return [...byId.values()]
+}
+
+function paginateShuffled(items, page) {
+  const pageSize = 20
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
+  const resolvedPage = Math.min(Math.max(1, page || Math.floor(Math.random() * Math.min(5, totalPages)) + 1), totalPages)
+  const start = (resolvedPage - 1) * pageSize
+  return {
+    results: shuffle(items.slice(start, start + pageSize)),
+    page: resolvedPage,
+  }
+}
+
+/**
+ * Discover a shuffled batch of movies or TV shows for the Randomizer.
+ *
+ * @param {{
+ *   type: 'movie' | 'tv',
+ *   includeGenres?: Array<{ movieId?: number|null, tvId?: number|null }>,
+ *   excludeGenres?: Array<{ movieId?: number|null, tvId?: number|null }>,
+ *   personName?: string,
+ *   page?: number,
+ * }} options
+ * @returns {Promise<{ results: ReturnType<typeof normalizeItem>[], page: number }>}
+ */
+export async function discoverRandom({
+  type,
+  includeGenres = [],
+  excludeGenres = [],
+  personName = '',
+  page,
+} = {}) {
+  if (type !== 'movie' && type !== 'tv') {
+    throw new Error('Randomizer requires movie or tv.')
+  }
+
+  const includeIds = genreIdsForType(includeGenres, type)
+  const excludeIds = genreIdsForType(excludeGenres, type)
+  const personId = await resolvePersonId(personName)
+
+  // TV discover has no with_people/with_cast filter, so person picks always go
+  // through credits. Movies use the same path so cast + crew both count.
+  if (personId) {
+    const creditsPath =
+      type === 'tv' ? `/person/${personId}/tv_credits` : `/person/${personId}/movie_credits`
+    const credits = await tmdbFetch(creditsPath)
+    const filtered = mapPersonCredits(credits, type)
+      .filter((item) => matchesIncludeGenres(item, includeIds))
+      .filter((item) => matchesExcludeGenres(item, excludeIds))
+      .sort((a, b) => b.popularity - a.popularity)
+
+    return paginateShuffled(filtered, page)
+  }
+
+  const params = {
+    sort_by: 'popularity.desc',
+    page: page || Math.floor(Math.random() * 5) + 1,
+  }
+
+  // OR: title may include any selected mood genre (and can have others too).
+  if (includeIds.length) {
+    params.with_genres = includeIds.join('|')
+  }
+
+  if (excludeIds.length) {
+    params.without_genres = excludeIds.join(',')
+  }
+
+  const path = type === 'tv' ? '/discover/tv' : '/discover/movie'
+  const data = await tmdbFetch(path, params)
+  const results = shuffle(
+    mapResults(data.results, type)
+      .filter((item) => matchesIncludeGenres(item, includeIds))
+      .filter((item) => matchesExcludeGenres(item, excludeIds)),
+  )
+
+  return { results, page: data.page || params.page }
+}
+
 function pickTrailerUrl(videos) {
   const clips = (videos?.results || []).filter((video) => video.site === 'YouTube' && video.key)
   const trailer =
