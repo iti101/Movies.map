@@ -1,12 +1,15 @@
 import { useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Navigate, Routes, Route, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar.jsx'
+import { AuthProvider, useAuth } from './context/AuthContext.jsx'
+import { WatchlistProvider } from './context/WatchlistContext.jsx'
 import DetailPage from './pages/DetailPage.jsx'
 import PersonCredits from './pages/PersonCredits.jsx'
 import SearchResults from './pages/SearchResults.jsx'
 import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
 import Randomizer from './pages/Randomizer.jsx'
+import Watchlist from './pages/Watchlist.jsx'
 
 // Detail pages scroll the window; Home uses a fixed 100vh snap container.
 // Without resetting window scroll on navigation, the viewport can sit below
@@ -21,7 +24,19 @@ function ScrollToTop() {
   return null
 }
 
-function App() {
+function PrivateRoute({ children }) {
+  const { isAuth, isReady, openLogin } = useAuth()
+
+  useEffect(() => {
+    if (isReady && !isAuth) openLogin()
+  }, [isReady, isAuth, openLogin])
+
+  if (!isReady) return null
+  if (!isAuth) return <Navigate to="/" replace />
+  return children
+}
+
+function AppRoutes() {
   return (
     <>
       <ScrollToTop />
@@ -35,10 +50,28 @@ function App() {
           <Route path="/person/:id/movies" element={<PersonCredits />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/randomizer" element={<Randomizer />} />
+          <Route
+            path="/watchlist"
+            element={
+              <PrivateRoute>
+                <Watchlist />
+              </PrivateRoute>
+            }
+          />
           <Route path="/login" element={<Login />} />
         </Routes>
       </main>
     </>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <WatchlistProvider>
+        <AppRoutes />
+      </WatchlistProvider>
+    </AuthProvider>
   )
 }
 

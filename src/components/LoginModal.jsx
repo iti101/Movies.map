@@ -1,21 +1,47 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { useAuth } from '../context/AuthContext.jsx'
+import { NoviApiError } from '../api/novi.js'
 import { useModalDismiss } from '../hooks/useModalDismiss.js'
 import './LoginModal.css'
 
 function LoginModal({ isOpen, onClose, onCreateAccount }) {
   const titleId = useId()
   const firstFieldRef = useRef(null)
+  const { login } = useAuth()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [pending, setPending] = useState(false)
 
   useModalDismiss(isOpen, onClose)
 
   useEffect(() => {
-    if (isOpen) firstFieldRef.current?.focus()
+    if (isOpen) {
+      firstFieldRef.current?.focus()
+      return
+    }
+
+    setEmail('')
+    setPassword('')
+    setError('')
+    setPending(false)
   }, [isOpen])
 
   if (!isOpen) return null
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
+    setError('')
+    setPending(true)
+
+    try {
+      await login(email.trim(), password)
+      onClose()
+    } catch (err) {
+      setError(err instanceof NoviApiError ? err.message : 'Sign in failed. Please try again.')
+    } finally {
+      setPending(false)
+    }
   }
 
   return (
@@ -42,13 +68,15 @@ function LoginModal({ isOpen, onClose, onCreateAccount }) {
 
         <form className="login-modal__form" onSubmit={handleSubmit}>
           <label className="login-modal__field">
-            <span className="login-modal__label">Username or email</span>
+            <span className="login-modal__label">Email</span>
             <input
               ref={firstFieldRef}
               className="login-modal__input"
-              type="text"
-              name="identifier"
-              autoComplete="username"
+              type="email"
+              name="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               required
             />
           </label>
@@ -60,20 +88,20 @@ function LoginModal({ isOpen, onClose, onCreateAccount }) {
               type="password"
               name="password"
               autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
               required
             />
           </label>
 
-          <a
-            className="login-modal__forgot"
-            href="#"
-            onClick={(event) => event.preventDefault()}
-          >
-            Forgot your password?
-          </a>
+          {error ? (
+            <p className="login-modal__error" role="alert">
+              {error}
+            </p>
+          ) : null}
 
-          <button type="submit" className="login-modal__submit">
-            Sign in
+          <button type="submit" className="login-modal__submit" disabled={pending}>
+            {pending ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
 

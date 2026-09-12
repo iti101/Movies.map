@@ -74,6 +74,43 @@
   height: 18px;
 }
 
+.navbar__account {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: min(52vw, 14rem);
+}
+
+.navbar__user {
+  overflow: hidden;
+  max-width: 8.5rem;
+  color: var(--navbar-fg);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navbar__logout {
+  flex-shrink: 0;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-panel-soft);
+  color: var(--navbar-fg);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.navbar__logout:hover {
+  background: var(--color-wash-strong);
+  border-color: var(--color-border-strong);
+}
+
 .navbar__hamburger,
 .navbar__login {
   position: relative;
@@ -183,7 +220,8 @@
 .navbar__menu-link:focus-visible,
 .navbar__theme-btn:focus-visible,
 .navbar__hamburger:focus-visible,
-.navbar__login:focus-visible {
+.navbar__login:focus-visible,
+.navbar__logout:focus-visible {
   outline: 2px solid var(--navbar-fg);
   outline-offset: 4px;
 }
