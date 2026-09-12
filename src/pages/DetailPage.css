@@ -222,6 +222,14 @@
   background: var(--color-accent-btn-hover);
 }
 
+.detail__action-btn--added {
+  background: var(--color-control-active);
+}
+
+.detail__action-btn--added:hover {
+  background: var(--color-control-active);
+}
+
 .detail__section {
   display: flex;
   flex-direction: column;

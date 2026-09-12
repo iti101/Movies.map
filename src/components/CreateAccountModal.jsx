@@ -1,4 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { NoviApiError } from '../api/novi.js'
+import { useAuth } from '../context/AuthContext.jsx'
 import { useModalDismiss } from '../hooks/useModalDismiss.js'
 import './LoginModal.css'
 import './CreateAccountModal.css'
@@ -66,12 +68,14 @@ function CreateAccountModal({ isOpen, onClose, onSignIn, onBackHome }) {
   const passwordId = useId()
   const confirmId = useId()
   const firstFieldRef = useRef(null)
+  const { register } = useAuth()
 
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
+  const [pending, setPending] = useState(false)
 
   useModalDismiss(isOpen, onClose)
 
@@ -86,11 +90,12 @@ function CreateAccountModal({ isOpen, onClose, onSignIn, onBackHome }) {
     setPassword('')
     setConfirmPassword('')
     setError('')
+    setPending(false)
   }, [isOpen])
 
   if (!isOpen) return null
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
     const hasMinLength = password.length >= 8
@@ -108,6 +113,18 @@ function CreateAccountModal({ isOpen, onClose, onSignIn, onBackHome }) {
     }
 
     setError('')
+    setPending(true)
+
+    try {
+      await register(username.trim(), email.trim(), password)
+      onClose()
+    } catch (err) {
+      setError(
+        err instanceof NoviApiError ? err.message : 'Could not create account. Please try again.',
+      )
+    } finally {
+      setPending(false)
+    }
   }
 
   return (
@@ -198,8 +215,8 @@ function CreateAccountModal({ isOpen, onClose, onSignIn, onBackHome }) {
 
           {error ? <p className="create-account__error">{error}</p> : null}
 
-          <button type="submit" className="login-modal__submit">
-            Create account
+          <button type="submit" className="login-modal__submit" disabled={pending}>
+            {pending ? 'Creating…' : 'Create account'}
           </button>
         </form>
 

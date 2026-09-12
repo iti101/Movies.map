@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import loginIcon from '../assets/ICON-login-user-account.svg'
+import { useAuth } from '../context/AuthContext.jsx'
 import useTheme from '../hooks/useTheme.js'
 import { scrollToSection } from '../scrollToSection.js'
 import CreateAccountModal from './CreateAccountModal.jsx'
 import LoginModal from './LoginModal.jsx'
 import './Navbar.css'
 
-const MENU_ITEMS = [
+const BASE_MENU_ITEMS = [
   { label: 'Home', sectionId: 'hero' },
   { label: 'Search', sectionId: 'search' },
+  { label: 'Watchlist', to: '/watchlist' },
   { label: 'Randomizer', to: '/randomizer' },
-  { label: 'Log-in', action: 'login' },
 ]
 
 const menuLinkClass = ({ isActive }) =>
@@ -49,17 +50,37 @@ function MoonIcon() {
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
-  const [authView, setAuthView] = useState(null)
   const [theme, setTheme] = useTheme()
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const {
+    isAuth,
+    user,
+    authView,
+    openLogin,
+    openRegister,
+    closeAuth,
+    logout,
+  } = useAuth()
 
   const closeMenu = () => setIsOpen(false)
-  const closeAuth = () => setAuthView(null)
-  const openLogin = () => {
+
+  const handleOpenLogin = () => {
     closeMenu()
-    setAuthView('login')
+    openLogin()
   }
+
+  const handleLogout = () => {
+    closeMenu()
+    logout()
+  }
+
+  const menuItems = [
+    ...BASE_MENU_ITEMS,
+    isAuth
+      ? { label: 'Log out', action: 'logout' }
+      : { label: 'Log-in', action: 'login' },
+  ]
 
   useEffect(() => {
     if (!isOpen) return
@@ -89,6 +110,8 @@ function Navbar() {
       navigate('/')
     }
   }
+
+  const displayName = user?.username || user?.email || 'Account'
 
   return (
     <>
@@ -127,14 +150,29 @@ function Navbar() {
             </button>
           </div>
 
-          <button
-            type="button"
-            className="navbar__login"
-            aria-label="Log in"
-            onClick={openLogin}
-          >
-            <img src={loginIcon} alt="" className="navbar__login-icon" />
-          </button>
+          {isAuth ? (
+            <div className="navbar__account">
+              <span className="navbar__user" title={user?.email || displayName}>
+                {displayName}
+              </span>
+              <button
+                type="button"
+                className="navbar__logout"
+                onClick={handleLogout}
+              >
+                Log out
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="navbar__login"
+              aria-label="Log in"
+              onClick={handleOpenLogin}
+            >
+              <img src={loginIcon} alt="" className="navbar__login-icon" />
+            </button>
+          )}
         </div>
       </header>
 
@@ -144,14 +182,18 @@ function Navbar() {
       >
         <nav aria-label="Main navigation">
           <ul className="navbar__menu-list">
-            {MENU_ITEMS.map((item) => (
+            {menuItems.map((item) => (
               <li key={item.label}>
                 {item.to ? (
                   <NavLink to={item.to} className={menuLinkClass} onClick={closeMenu}>
                     {item.label}
                   </NavLink>
                 ) : item.action === 'login' ? (
-                  <button type="button" className="navbar__menu-link" onClick={openLogin}>
+                  <button type="button" className="navbar__menu-link" onClick={handleOpenLogin}>
+                    {item.label}
+                  </button>
+                ) : item.action === 'logout' ? (
+                  <button type="button" className="navbar__menu-link" onClick={handleLogout}>
                     {item.label}
                   </button>
                 ) : (
@@ -172,12 +214,12 @@ function Navbar() {
       <LoginModal
         isOpen={authView === 'login'}
         onClose={closeAuth}
-        onCreateAccount={() => setAuthView('register')}
+        onCreateAccount={openRegister}
       />
       <CreateAccountModal
         isOpen={authView === 'register'}
         onClose={closeAuth}
-        onSignIn={() => setAuthView('login')}
+        onSignIn={openLogin}
         onBackHome={goHomeFromAuth}
       />
     </>

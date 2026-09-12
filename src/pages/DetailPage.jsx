@@ -2,6 +2,9 @@ import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Select from '../components/Select.jsx'
 import MovieCard from '../components/MovieCard.jsx'
+import WatchlistModal from '../components/WatchlistModal.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
+import { toWatchlistItem, useWatchlist } from '../context/WatchlistContext.jsx'
 import {
   getFallbackWatchRegions,
   getImageUrl,
@@ -79,11 +82,63 @@ function TrailerLink({ url }) {
   )
 }
 
-function WatchlistButton() {
+function WatchlistButton({ item, mediaType }) {
+  const { lists, addItem, isInList } = useWatchlist()
+  const { isAuth, openLogin } = useAuth()
+  const [modalOpen, setModalOpen] = useState(false)
+  const [status, setStatus] = useState('')
+  const watchItem = toWatchlistItem(item, mediaType)
+  const onlyList = lists.length === 1 ? lists[0] : null
+  const alreadyInOnlyList = onlyList ? isInList(onlyList.id, watchItem) : false
+
+  useEffect(() => {
+    setStatus('')
+  }, [item.id, mediaType])
+
+  useEffect(() => {
+    if (!status) return undefined
+    const timer = window.setTimeout(() => setStatus(''), 2500)
+    return () => window.clearTimeout(timer)
+  }, [status])
+
+  function handleClick() {
+    if (!isAuth) {
+      openLogin()
+      return
+    }
+
+    if (lists.length === 1) {
+      if (alreadyInOnlyList) {
+        setStatus('Already in watchlist')
+        return
+      }
+      addItem(onlyList.id, watchItem)
+      setStatus(`Added to ${onlyList.name}`)
+      return
+    }
+
+    setModalOpen(true)
+  }
+
+  const label = status || (alreadyInOnlyList ? 'In watchlist' : 'Add to watchlist')
+
   return (
-    <button type="button" className="detail__action-btn">
-      Add to watchlist
-    </button>
+    <>
+      <button
+        type="button"
+        className={`detail__action-btn${status || alreadyInOnlyList ? ' detail__action-btn--added' : ''}`}
+        onClick={handleClick}
+        aria-live="polite"
+      >
+        {label}
+      </button>
+      <WatchlistModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        item={watchItem}
+        onAdded={(listName) => setStatus(`Added to ${listName}`)}
+      />
+    </>
   )
 }
 
@@ -276,7 +331,7 @@ function MovieDetail({ movie }) {
             <Rating rating={movie.rating} voteCount={movie.voteCount} />
             <div className="detail__cta">
               <TrailerLink url={movie.trailerUrl} />
-              <WatchlistButton />
+              <WatchlistButton item={movie} mediaType="movie" />
             </div>
           </div>
         </div>
@@ -453,7 +508,7 @@ function TvDetail({ show }) {
             <Rating rating={show.rating} voteCount={show.voteCount} />
             <div className="detail__cta">
               <TrailerLink url={show.trailerUrl} />
-              <WatchlistButton />
+              <WatchlistButton item={show} mediaType="tv" />
             </div>
           </div>
         </div>
