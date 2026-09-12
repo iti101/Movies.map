@@ -1,4 +1,5 @@
 import Typewriter from '../components/Typewriter.jsx'
+import './Hero.css'
 
 function Hero() {
   return (

@@ -8,7 +8,6 @@ import PersonCredits from './pages/PersonCredits.jsx'
 import SearchResults from './pages/SearchResults.jsx'
 import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
-import Randomizer from './pages/Randomizer.jsx'
 import Watchlist from './pages/Watchlist.jsx'
 
 // Detail pages scroll the window; Home uses a fixed 100vh snap container.
@@ -49,7 +48,6 @@ function AppRoutes() {
           <Route path="/person/:id" element={<DetailPage mediaType="person" />} />
           <Route path="/person/:id/movies" element={<PersonCredits />} />
           <Route path="/search" element={<SearchResults />} />
-          <Route path="/randomizer" element={<Randomizer />} />
           <Route
             path="/watchlist"
             element={

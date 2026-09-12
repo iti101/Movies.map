@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { scrollToSection } from '../scrollToSection.js'
 import Hero from './Hero.jsx'
 import Search from './Search.jsx'
-import Contact from './Contact.jsx'
+import Randomizer from './Randomizer.jsx'
 
 function Home() {
   const { state } = useLocation()
@@ -26,7 +26,7 @@ function Home() {
     <div className="scroll-container">
       <Hero />
       <Search />
-      <Contact />
+      <Randomizer />
     </div>
   )
 }

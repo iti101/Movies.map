@@ -93,6 +93,43 @@
   background: var(--color-panel);
 }
 
+.login-modal__password-wrap {
+  position: relative;
+}
+
+.login-modal__password-input {
+  padding-right: 2.75rem;
+}
+
+.login-modal__password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.login-modal__password-toggle:hover {
+  background: var(--color-wash-strong);
+  color: var(--color-ink);
+}
+
+.login-modal__password-toggle svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
 .login-modal__error {
   margin: 0;
   color: #c45c5c;
@@ -127,7 +164,8 @@
 
 .login-modal__submit:focus-visible,
 .login-modal__close:focus-visible,
-.login-modal__create:focus-visible {
+.login-modal__create:focus-visible,
+.login-modal__password-toggle:focus-visible {
   outline: 2px solid var(--color-ink);
   outline-offset: 3px;
 }

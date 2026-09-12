@@ -12,7 +12,7 @@ const BASE_MENU_ITEMS = [
   { label: 'Home', sectionId: 'hero' },
   { label: 'Search', sectionId: 'search' },
   { label: 'Watchlist', to: '/watchlist' },
-  { label: 'Randomizer', to: '/randomizer' },
+  { label: 'Randomizer', sectionId: 'randomizer' },
 ]
 
 const menuLinkClass = ({ isActive }) =>
