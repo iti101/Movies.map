@@ -10,8 +10,14 @@ function Home() {
 
   useEffect(() => {
     const sectionId = state?.scrollTo
-    if (!sectionId) return
+    const container = document.querySelector('.scroll-container')
 
+    if (!sectionId) {
+      if (container) container.scrollTop = 0
+      return
+    }
+
+    // Wait a frame so the snap sections are laid out before scrolling.
     const frame = requestAnimationFrame(() => scrollToSection(sectionId))
     return () => cancelAnimationFrame(frame)
   }, [state])

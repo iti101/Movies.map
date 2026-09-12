@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react'
-import { Link, useMatch, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import Select from '../components/Select.jsx'
 import MovieCard from '../components/MovieCard.jsx'
 import {
@@ -73,9 +73,17 @@ function TrailerLink({ url }) {
   if (!url) return null
 
   return (
-    <a className="detail__trailer" href={url} target="_blank" rel="noreferrer">
+    <a className="detail__action-btn" href={url} target="_blank" rel="noreferrer">
       ▶ Watch trailer
     </a>
+  )
+}
+
+function WatchlistButton() {
+  return (
+    <button type="button" className="detail__action-btn">
+      Add to watchlist
+    </button>
   )
 }
 
@@ -266,7 +274,10 @@ function MovieDetail({ movie }) {
 
           <div className="detail__actions">
             <Rating rating={movie.rating} voteCount={movie.voteCount} />
-            <TrailerLink url={movie.trailerUrl} />
+            <div className="detail__cta">
+              <TrailerLink url={movie.trailerUrl} />
+              <WatchlistButton />
+            </div>
           </div>
         </div>
       </div>
@@ -440,7 +451,10 @@ function TvDetail({ show }) {
 
           <div className="detail__actions">
             <Rating rating={show.rating} voteCount={show.voteCount} />
-            <TrailerLink url={show.trailerUrl} />
+            <div className="detail__cta">
+              <TrailerLink url={show.trailerUrl} />
+              <WatchlistButton />
+            </div>
           </div>
         </div>
       </div>
@@ -470,7 +484,7 @@ function PersonPhoto({ name, profilePath }) {
 }
 
 function KnownForSection({ personId, movies }) {
-  if (!movies.length) return null
+  if (!movies?.length) return null
 
   const topMovies = movies.slice(0, KNOWN_FOR_LIMIT)
   const hasMore = movies.length > KNOWN_FOR_LIMIT
@@ -542,12 +556,9 @@ function loadDetails(mediaType, id) {
   return getMovieDetails(id)
 }
 
-function DetailPage() {
+function DetailPage({ mediaType }) {
   const { id } = useParams()
   const navigate = useNavigate()
-  const isPerson = Boolean(useMatch('/person/:id'))
-  const isTv = Boolean(useMatch('/tv/:id'))
-  const mediaType = isPerson ? 'person' : isTv ? 'tv' : 'movie'
 
   const { data: item, status, errorMessage } = useAsyncResource(
     () => loadDetails(mediaType, id),
@@ -561,7 +572,7 @@ function DetailPage() {
   const backdropUrl = getImageUrl(item?.backdropPath, 'w1280')
 
   return (
-    <article className="detail">
+    <article className="detail" key={`${mediaType}-${id}`}>
       {backdropUrl && (
         <div
           className="detail__backdrop"
@@ -582,9 +593,9 @@ function DetailPage() {
           </p>
         )}
         {item &&
-          (isPerson ? (
+          (mediaType === 'person' ? (
             <PersonDetail key={item.id} person={item} />
-          ) : isTv ? (
+          ) : mediaType === 'tv' ? (
             <TvDetail key={item.id} show={item} />
           ) : (
             <MovieDetail key={item.id} movie={item} />

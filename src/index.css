@@ -6,14 +6,108 @@
   padding: 0;
 }
 
-:root {
+:root,
+[data-theme='dark'] {
   --font-display: 'Fraunces', Georgia, serif;
   --font-body: 'Nunito', 'Segoe UI', sans-serif;
-  --color-ink: #1a1a1a;
-  --color-surface: #f7f4ef;
-  --color-hero: #1c2b24;
-  --color-search: #2f3e46;
-  --color-contact: #3d2c29;
+
+  /* Anthracite dark — not pure black */
+  --color-ink: #e8e6e3;
+  --color-surface: #2c2c2c;
+  --color-hero: #2a2e2c;
+  --color-search: #2e3236;
+  --color-contact: #322e2d;
+
+  --color-muted: rgba(232, 230, 227, 0.7);
+  --color-faint: rgba(232, 230, 227, 0.55);
+  --color-placeholder: rgba(168, 176, 188, 0.85);
+
+  --color-panel: rgba(0, 0, 0, 0.28);
+  --color-panel-soft: rgba(0, 0, 0, 0.2);
+  --color-panel-hover: rgba(0, 0, 0, 0.4);
+  --color-wash: rgba(255, 255, 255, 0.06);
+  --color-wash-strong: rgba(255, 255, 255, 0.1);
+  --color-media-placeholder: rgba(232, 230, 227, 0.12);
+
+  --color-control: #383c40;
+  --color-control-hover: #454a50;
+  --color-control-active: rgba(90, 101, 112, 0.9);
+  --color-accent-btn: #5a6570;
+  --color-accent-btn-hover: #6b7785;
+
+  --color-border: rgba(200, 210, 225, 0.28);
+  --color-border-strong: rgba(200, 210, 225, 0.45);
+  --color-focus-ring: rgba(244, 246, 248, 0.55);
+
+  --color-shadow: rgba(0, 0, 0, 0.35);
+  --color-shadow-strong: rgba(0, 0, 0, 0.5);
+
+  --navbar-fg: #f0eeea;
+  --navbar-line: rgba(240, 238, 234, 0.85);
+  --navbar-overlay: rgba(36, 36, 36, 0.97);
+  --navbar-icon-filter: brightness(0) invert(1);
+
+  --select-menu-bg: #32363a;
+  --select-chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%23e8e6e3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1.5 1.5 6 6 10.5 1.5'/%3E%3C/svg%3E");
+  --select-chevron-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%23e8e6e3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1.5 6.5 6 2 10.5 6.5'/%3E%3C/svg%3E");
+
+  --modal-scrim: rgba(20, 20, 20, 0.72);
+  --modal-input-bg: rgba(0, 0, 0, 0.28);
+  --modal-cta-bg: #e8e6e3;
+  --modal-cta-fg: #2c2c2c;
+  --modal-cta-hover: #f2f0ed;
+
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  /* Soft grey-white — not pure white */
+  --color-ink: #2a2a2a;
+  --color-surface: #e8e8e6;
+  --color-hero: #e0e4e1;
+  --color-search: #dde1e4;
+  --color-contact: #e4dfdd;
+
+  --color-muted: rgba(42, 42, 42, 0.72);
+  --color-faint: rgba(42, 42, 42, 0.55);
+  --color-placeholder: rgba(90, 96, 104, 0.75);
+
+  --color-panel: rgba(0, 0, 0, 0.06);
+  --color-panel-soft: rgba(0, 0, 0, 0.04);
+  --color-panel-hover: rgba(0, 0, 0, 0.1);
+  --color-wash: rgba(0, 0, 0, 0.04);
+  --color-wash-strong: rgba(0, 0, 0, 0.08);
+  --color-media-placeholder: rgba(42, 42, 42, 0.08);
+
+  --color-control: #f2f2f0;
+  --color-control-hover: #fafaf8;
+  --color-control-active: rgba(90, 101, 112, 0.22);
+  --color-accent-btn: #5a6570;
+  --color-accent-btn-hover: #4a5560;
+
+  --color-border: rgba(42, 42, 42, 0.16);
+  --color-border-strong: rgba(42, 42, 42, 0.28);
+  --color-focus-ring: rgba(42, 42, 42, 0.45);
+
+  --color-shadow: rgba(0, 0, 0, 0.12);
+  --color-shadow-strong: rgba(0, 0, 0, 0.2);
+
+  --navbar-fg: #2a2a2a;
+  --navbar-line: rgba(42, 42, 42, 0.35);
+  --navbar-overlay: rgba(232, 232, 230, 0.98);
+  --navbar-icon-filter: brightness(0);
+
+  --select-menu-bg: #f2f2f0;
+  --select-chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%232a2a2a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1.5 1.5 6 6 10.5 1.5'/%3E%3C/svg%3E");
+  --select-chevron-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%232a2a2a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1.5 6.5 6 2 10.5 6.5'/%3E%3C/svg%3E");
+
+  --modal-scrim: rgba(42, 42, 42, 0.45);
+  --modal-input-bg: rgba(255, 255, 255, 0.55);
+  --modal-cta-bg: #2a2a2a;
+  --modal-cta-fg: #e8e8e6;
+  --modal-cta-hover: #3a3a3a;
+
+  color-scheme: light;
 }
 
 html,
@@ -26,6 +120,13 @@ body {
   font-family: var(--font-body);
   color: var(--color-ink);
   background: var(--color-surface);
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Keep route content as the scroll root so window scroll doesn't drift
+   past full-viewport pages (Home / Login / Randomizer) after visiting details. */
+main {
+  min-height: 100%;
 }
 
 .scroll-container {
@@ -42,7 +143,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #f4f1ea;
+  color: var(--color-ink);
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 .section-title {

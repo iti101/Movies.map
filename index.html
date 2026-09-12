@@ -13,6 +13,19 @@
     />
   </head>
   <body>
+    <script>
+      ;(function () {
+        try {
+          var t = localStorage.getItem('movies-map-theme')
+          document.documentElement.setAttribute(
+            'data-theme',
+            t === 'light' || t === 'dark' ? t : 'dark',
+          )
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark')
+        }
+      })()
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

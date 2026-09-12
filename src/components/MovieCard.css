@@ -11,8 +11,8 @@
   aspect-ratio: 2 / 3;
   object-fit: cover;
   border-radius: 0.75rem;
-  background: rgba(244, 241, 234, 0.12);
-  box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.35);
+  background: var(--color-media-placeholder);
+  box-shadow: 0 0.75rem 1.5rem var(--color-shadow);
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease;
@@ -20,11 +20,11 @@
 
 .movie-card:hover .movie-card__poster {
   transform: translateY(-0.3rem);
-  box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.5);
+  box-shadow: 0 1rem 2rem var(--color-shadow-strong);
 }
 
 .movie-card:focus-visible {
-  outline: 2px solid rgba(244, 246, 248, 0.55);
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 3px;
   border-radius: 0.75rem;
 }
@@ -34,7 +34,7 @@
   align-items: center;
   justify-content: center;
   font-size: 0.8rem;
-  color: rgba(244, 241, 234, 0.55);
+  color: var(--color-faint);
 }
 
 .movie-card__body {
@@ -51,5 +51,5 @@
 
 .movie-card__year {
   font-size: 0.8rem;
-  color: rgba(244, 241, 234, 0.6);
+  color: var(--color-muted);
 }

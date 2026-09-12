@@ -17,8 +17,61 @@
   right: 1.5rem;
   top: calc(0.625rem + 44px + 10px);
   height: 1px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--navbar-line);
   pointer-events: none;
+  transition: background-color 0.25s ease;
+}
+
+.navbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.navbar__theme {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.15rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-panel-soft);
+}
+
+.navbar__theme-btn {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--navbar-fg);
+  opacity: 0.55;
+  cursor: pointer;
+  border-radius: 999px;
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease,
+    color 0.2s ease;
+}
+
+.navbar__theme-btn:hover {
+  opacity: 0.85;
+  background: var(--color-wash);
+}
+
+.navbar__theme-btn--active {
+  opacity: 1;
+  background: var(--color-wash-strong);
+}
+
+.navbar__theme-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .navbar__hamburger,
@@ -33,15 +86,15 @@
   padding: 0;
   border: none;
   background: transparent;
-  color: #ffffff;
+  color: var(--navbar-fg);
   cursor: pointer;
   border-radius: 8px;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .navbar__hamburger:hover,
 .navbar__login:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-wash-strong);
 }
 
 .navbar__hamburger {
@@ -73,7 +126,7 @@
 .navbar__login-icon {
   width: 24px;
   height: 24px;
-  filter: brightness(0) invert(1);
+  filter: var(--navbar-icon-filter);
 }
 
 .navbar__overlay {
@@ -83,10 +136,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(17, 24, 39, 0.97);
+  background: var(--navbar-overlay);
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.25s ease, visibility 0.25s ease;
+  transition: opacity 0.25s ease, visibility 0.25s ease, background-color 0.25s ease;
 }
 
 .navbar__overlay--open {
@@ -107,7 +160,7 @@
   padding: 0.75rem 1.5rem;
   border: none;
   background: transparent;
-  color: #ffffff;
+  color: var(--navbar-fg);
   font-family: var(--font-body);
   font-size: 2rem;
   font-weight: 500;
@@ -119,17 +172,18 @@
 }
 
 .navbar__menu-link:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f3f4f6;
+  background: var(--color-wash-strong);
 }
 
 .navbar__menu-link--active {
-  color: #f3f4f6;
   text-decoration: underline;
   text-underline-offset: 0.35em;
 }
 
-.navbar__menu-link:focus-visible {
-  outline: 2px solid #ffffff;
+.navbar__menu-link:focus-visible,
+.navbar__theme-btn:focus-visible,
+.navbar__hamburger:focus-visible,
+.navbar__login:focus-visible {
+  outline: 2px solid var(--navbar-fg);
   outline-offset: 4px;
 }

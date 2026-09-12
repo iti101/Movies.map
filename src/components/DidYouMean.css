@@ -2,7 +2,7 @@
   margin: 0 0 0.75rem;
   font-family: var(--font-body);
   font-size: 0.95rem;
-  color: rgba(244, 241, 234, 0.8);
+  color: var(--color-muted);
   text-align: center;
 }
 
@@ -10,7 +10,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: #9ec5ff;
+  color: #5b8fd4;
   font: inherit;
   font-weight: 600;
   text-decoration: underline;
@@ -18,13 +18,22 @@
   cursor: pointer;
 }
 
+[data-theme='dark'] .did-you-mean__btn {
+  color: #9ec5ff;
+}
+
 .did-you-mean__btn:hover,
 .did-you-mean__btn:focus-visible {
+  color: #3d6fad;
+}
+
+[data-theme='dark'] .did-you-mean__btn:hover,
+[data-theme='dark'] .did-you-mean__btn:focus-visible {
   color: #c5dbff;
 }
 
 .did-you-mean__btn:focus-visible {
-  outline: 2px solid rgba(158, 197, 255, 0.55);
+  outline: 2px solid rgba(91, 143, 212, 0.55);
   outline-offset: 2px;
   border-radius: 2px;
 }

@@ -1,0 +1,159 @@
+.create-account__dialog {
+  width: min(100%, 26rem);
+  padding: 1.35rem 1.5rem 1.15rem;
+  overflow: visible;
+}
+
+.create-account__header {
+  margin-bottom: 0.85rem;
+  text-align: center;
+}
+
+.create-account__title {
+  margin: 0 1.5rem 0.35rem;
+  font-size: 1.55rem;
+  text-align: center;
+}
+
+.create-account__subtitle {
+  margin: 0;
+  color: var(--color-muted);
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.create-account__dialog .login-modal__form {
+  gap: 0.7rem;
+}
+
+.create-account__dialog .login-modal__field {
+  gap: 0.28rem;
+}
+
+.create-account__dialog .login-modal__label {
+  font-size: 0.82rem;
+}
+
+.create-account__dialog .login-modal__input {
+  padding: 0.58rem 0.8rem;
+  font-size: 0.95rem;
+}
+
+.create-account__dialog .login-modal__submit {
+  margin-top: 0.15rem;
+  padding: 0.68rem 1rem;
+}
+
+.create-account__password-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.create-account__password-wrap {
+  position: relative;
+}
+
+.create-account__password-input {
+  padding-right: 2.75rem;
+}
+
+.create-account__toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.create-account__toggle:hover {
+  background: var(--color-wash-strong);
+  color: var(--color-ink);
+}
+
+.create-account__toggle svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.create-account__rules {
+  margin: 0;
+  padding-left: 1.05rem;
+  color: var(--color-faint);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.create-account__error {
+  margin: 0;
+  color: #f0b4a8;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.create-account__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.9rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.create-account__footer-text {
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 0.84rem;
+}
+
+.create-account__footer .login-modal__create {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.create-account__home {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.create-account__home:hover {
+  color: var(--color-ink);
+}
+
+.create-account__toggle:focus-visible,
+.create-account__home:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
+}
+
+.login-modal__input::placeholder {
+  color: var(--color-placeholder);
+}
