@@ -128,7 +128,7 @@ const GENRE_SLUGS = {
   'War & Politics': 'war-politics',
 }
 
-export function genreHashtag(name) {
+function genreHashtag(name) {
   const slug =
     GENRE_SLUGS[name] ||
     name
@@ -601,9 +601,27 @@ function mapCast(credits) {
   }))
 }
 
+const RELATED_LIMIT = 8
+
+function mapRelated(recommendations, similar, mediaType, excludeId) {
+  const seen = new Set([Number(excludeId)])
+  const related = []
+
+  for (const source of [recommendations?.results, similar?.results]) {
+    for (const item of mapResults(source, mediaType)) {
+      if (seen.has(item.id)) continue
+      seen.add(item.id)
+      related.push(item)
+      if (related.length >= RELATED_LIMIT) return related
+    }
+  }
+
+  return related
+}
+
 export async function getMovieDetails(id) {
   const data = await tmdbFetch(`/movie/${id}`, {
-    append_to_response: 'credits,videos,watch/providers',
+    append_to_response: 'credits,videos,watch/providers,recommendations,similar',
     include_video_language: 'en-US,en,null',
   })
 
@@ -624,12 +642,14 @@ export async function getMovieDetails(id) {
     cast: mapCast(data.credits),
     trailerUrl: await fetchTrailerUrl('movie', id, data.videos),
     watch: normalizeWatchProviders(data['watch/providers']),
+    similar: mapRelated(data.recommendations, data.similar, 'movie', data.id),
   }
 }
 
 export async function getTvDetails(id) {
   const data = await tmdbFetch(`/tv/${id}`, {
-    append_to_response: 'aggregate_credits,credits,videos,watch/providers',
+    append_to_response:
+      'aggregate_credits,credits,videos,watch/providers,recommendations,similar',
     include_video_language: 'en-US,en,null',
   })
 
@@ -655,6 +675,7 @@ export async function getTvDetails(id) {
     ),
     trailerUrl: await fetchTrailerUrl('tv', id, data.videos),
     watch: normalizeWatchProviders(data['watch/providers']),
+    similar: mapRelated(data.recommendations, data.similar, 'tv', data.id),
   }
 }
 

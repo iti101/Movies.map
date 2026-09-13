@@ -1,4 +1,5 @@
 .randomizer {
+  background: var(--color-contact);
   padding: 4rem 1.5rem 3.5rem;
   flex-direction: column;
   justify-content: center;
@@ -175,6 +176,18 @@
   align-items: center;
   gap: 0.65rem;
   width: min(22rem, 100%);
+}
+
+.randomizer__person-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.randomizer__person .did-you-mean {
+  margin: 0;
 }
 
 .randomizer__input {

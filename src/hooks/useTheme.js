@@ -1,29 +1,16 @@
 import { useEffect, useState } from 'react'
 
-export const THEME_STORAGE_KEY = 'movies-map-theme'
+const THEME_STORAGE_KEY = 'movies-map-theme'
 
-export function getStoredTheme() {
-  try {
-    const stored = localStorage.getItem(THEME_STORAGE_KEY)
-    if (stored === 'light' || stored === 'dark') return stored
-  } catch {
-    // ignore storage access errors
-  }
-  return 'dark'
-}
-
-export function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme)
-}
-
+// index.html applies the stored theme before React mounts, so the document is
+// already the source of truth for the initial value.
 function useTheme() {
-  const [theme, setTheme] = useState(() => {
-    if (typeof document === 'undefined') return 'dark'
-    return document.documentElement.getAttribute('data-theme') || getStoredTheme()
-  })
+  const [theme, setTheme] = useState(
+    () => document.documentElement.getAttribute('data-theme') || 'dark',
+  )
 
   useEffect(() => {
-    applyTheme(theme)
+    document.documentElement.setAttribute('data-theme', theme)
     try {
       localStorage.setItem(THEME_STORAGE_KEY, theme)
     } catch {

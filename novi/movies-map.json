@@ -63,6 +63,58 @@
         "PATCH": ["user", "admin"],
         "DELETE": ["user", "admin"]
       }
+    },
+    {
+      "name": "reviews",
+      "fields": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "userId",
+          "type": "reference:users",
+          "required": true
+        },
+        {
+          "name": "mediaType",
+          "type": "string",
+          "required": true,
+          "min": 2,
+          "max": 10
+        },
+        {
+          "name": "mediaId",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "required": true,
+          "min": 1,
+          "max": 2000
+        },
+        {
+          "name": "rating",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "createdAt",
+          "type": "date",
+          "required": false,
+          "default": "CurrentDate"
+        }
+      ],
+      "permissions": {
+        "GET": ["anonymous", "user", "admin"],
+        "POST": ["user", "admin"],
+        "PUT": ["user", "admin"],
+        "PATCH": ["user", "admin"],
+        "DELETE": ["user", "admin"]
+      }
     }
   ],
   "users": [
@@ -92,6 +144,7 @@
         "username": "demo"
       }
     ],
-    "watchlists": []
+    "watchlists": [],
+    "reviews": []
   }
 }

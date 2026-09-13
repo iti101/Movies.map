@@ -126,6 +126,11 @@ export function WatchlistProvider({ children }) {
     [state.lists],
   )
 
+  const isInAnyList = useCallback(
+    (item) => state.lists.some((list) => list.items.some((existing) => sameItem(existing, item))),
+    [state.lists],
+  )
+
   const value = useMemo(
     () => ({
       lists: state.lists,
@@ -137,8 +142,9 @@ export function WatchlistProvider({ children }) {
       addItem,
       removeItem,
       isInList,
+      isInAnyList,
     }),
-    [state, createList, deleteList, setActiveListId, addItem, removeItem, isInList],
+    [state, createList, deleteList, setActiveListId, addItem, removeItem, isInList, isInAnyList],
   )
 
   return <WatchlistContext.Provider value={value}>{children}</WatchlistContext.Provider>

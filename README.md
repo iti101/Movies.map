@@ -5,7 +5,7 @@ React frontend for Movies.map (Vite + React + JavaScript). Browse movies and TV 
 ## Scripts
 
 - `npm install` — install dependencies
-- `npm run dev` — start local development server (must run on port **5173** for NOVI CORS)
+- `npm run dev` — start local development server on port **5173** (proxies `/novi` → NOVI API to avoid CORS)
 - `npm run build` — production build
 - `npm run preview` — preview production build
 

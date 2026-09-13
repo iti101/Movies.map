@@ -5,21 +5,41 @@ import Hero from './Hero.jsx'
 import Search from './Search.jsx'
 import Randomizer from './Randomizer.jsx'
 
+// Survives Home unmounting when you open a detail page, so Back can restore
+// Search / Randomizer instead of always dumping you on the hero.
+let savedHomeScrollTop = 0
+
 function Home() {
   const { state } = useLocation()
 
   useEffect(() => {
-    const sectionId = state?.scrollTo
     const container = document.querySelector('.scroll-container')
+    if (!container) return
 
-    if (!sectionId) {
-      if (container) container.scrollTop = 0
-      return
+    const onScroll = () => {
+      savedHomeScrollTop = container.scrollTop
     }
 
-    // Wait a frame so the snap sections are laid out before scrolling.
-    const frame = requestAnimationFrame(() => scrollToSection(sectionId))
-    return () => cancelAnimationFrame(frame)
+    container.addEventListener('scroll', onScroll, { passive: true })
+    return () => container.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    const container = document.querySelector('.scroll-container')
+    if (!container) return
+
+    const sectionId = state?.scrollTo
+    if (sectionId) {
+      const frame = requestAnimationFrame(() => {
+        scrollToSection(sectionId)
+        requestAnimationFrame(() => {
+          savedHomeScrollTop = container.scrollTop
+        })
+      })
+      return () => cancelAnimationFrame(frame)
+    }
+
+    container.scrollTop = savedHomeScrollTop
   }, [state])
 
   return (

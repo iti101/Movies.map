@@ -154,15 +154,3 @@ main {
   letter-spacing: 0.02em;
 }
 
-.hero,
-.login {
-  background: var(--color-hero);
-}
-
-.hero {
-  padding: 5.5rem 1.5rem 1.5rem;
-}
-
-.randomizer {
-  background: var(--color-contact);
-}

@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Select from '../components/Select.jsx'
 import MovieCard from '../components/MovieCard.jsx'
+import StarRating from '../components/StarRating.jsx'
 import WatchlistModal from '../components/WatchlistModal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { toWatchlistItem, useWatchlist } from '../context/WatchlistContext.jsx'
@@ -17,6 +18,7 @@ import {
   saveWatchRegion,
   watchRegionName,
 } from '../api/tmdb.js'
+import { createReview, getReviewsForMedia, NoviApiError } from '../api/novi.js'
 import { useAsyncResource } from '../hooks/useAsyncResource.js'
 import './DetailPage.css'
 
@@ -301,6 +303,329 @@ function CastSection({ cast }) {
   )
 }
 
+function SimilarSection({ items, label = 'More like this' }) {
+  if (!items?.length) return null
+
+  return (
+    <section className="detail__section">
+      <h2 className="detail__section-title">{label}</h2>
+      <ul className="detail__movie-grid">
+        {items.map((item) => (
+          <li key={`${item.mediaType}-${item.id}`}>
+            <MovieCard item={item} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function formatReviewDate(value) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function ReviewsSection({ item, mediaType }) {
+  const { user, token, isAuth, openLogin } = useAuth()
+  const { isInAnyList } = useWatchlist()
+  const watchItem = toWatchlistItem(item, mediaType)
+
+  const [writeOpen, setWriteOpen] = useState(false)
+  const [ratingOpen, setRatingOpen] = useState(false)
+  const [text, setText] = useState('')
+  const [rating, setRating] = useState(0)
+  const [reviews, setReviews] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [gateStatus, setGateStatus] = useState('')
+
+  const ownReview =
+    isAuth && user?.id != null
+      ? reviews.find((review) => Number(review.userId) === Number(user.id))
+      : null
+  const hasOwnReview = Boolean(ownReview)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      setLoading(true)
+      try {
+        const list = await getReviewsForMedia(mediaType, item.id, token)
+        if (!cancelled) setReviews(list)
+      } catch {
+        if (!cancelled) setReviews([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [mediaType, item.id, token])
+
+  useEffect(() => {
+    if (!gateStatus) return undefined
+    const timer = window.setTimeout(() => setGateStatus(''), 2500)
+    return () => window.clearTimeout(timer)
+  }, [gateStatus])
+
+  useEffect(() => {
+    if (!hasOwnReview) return
+    setWriteOpen(false)
+    setRatingOpen(false)
+    setText('')
+    setRating(0)
+    setError('')
+  }, [hasOwnReview])
+
+  function ensureCanCompose() {
+    if (!isAuth) {
+      openLogin()
+      return false
+    }
+    if (hasOwnReview) {
+      setGateStatus('You’ve already reviewed this title.')
+      setWriteOpen(false)
+      setRatingOpen(false)
+      return false
+    }
+    if (!isInAnyList(watchItem)) {
+      setModalOpen(true)
+      setGateStatus('Add this title to a watchlist to review it')
+      return false
+    }
+    return true
+  }
+
+  function toggleWrite() {
+    if (writeOpen) {
+      setWriteOpen(false)
+      return
+    }
+    if (!ensureCanCompose()) return
+    setWriteOpen(true)
+    setError('')
+  }
+
+  function toggleRating() {
+    if (ratingOpen) {
+      setRatingOpen(false)
+      return
+    }
+    if (!ensureCanCompose()) return
+    setRatingOpen(true)
+    setError('')
+  }
+
+  async function handlePublish() {
+    if (!ensureCanCompose()) return
+
+    const trimmed = text.trim()
+    if (!trimmed) {
+      setWriteOpen(true)
+      setError('Write a review before publishing.')
+      return
+    }
+
+    if (user?.id == null || !token) {
+      openLogin()
+      return
+    }
+
+    const alreadyReviewed = reviews.some(
+      (review) => Number(review.userId) === Number(user.id),
+    )
+    if (alreadyReviewed) {
+      setError('You’ve already reviewed this title.')
+      setWriteOpen(false)
+      setRatingOpen(false)
+      return
+    }
+
+    setSubmitting(true)
+    setError('')
+
+    try {
+      const latest = await getReviewsForMedia(mediaType, item.id, token)
+      const duplicate = latest.some((review) => Number(review.userId) === Number(user.id))
+      if (duplicate) {
+        setReviews(latest)
+        setError('You’ve already reviewed this title.')
+        setWriteOpen(false)
+        setRatingOpen(false)
+        return
+      }
+
+      await createReview(
+        {
+          userId: user.id,
+          mediaType,
+          mediaId: item.id,
+          text: trimmed,
+          rating: rating > 0 ? rating : undefined,
+        },
+        token,
+      )
+      const list = await getReviewsForMedia(mediaType, item.id, token)
+      setReviews(list)
+      setText('')
+      setRating(0)
+      setWriteOpen(false)
+      setRatingOpen(false)
+    } catch (err) {
+      setError(
+        err instanceof NoviApiError
+          ? err.message
+          : 'Could not publish your review. Try again.',
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <section className="detail__section">
+      <h2 className="detail__section-title">Reviews</h2>
+
+      <div className="detail__review-compose">
+        {hasOwnReview ? (
+          <p className="detail__review-hint" role="status">
+            You’ve already reviewed this title.
+          </p>
+        ) : (
+          <>
+            <div className="detail__review-toggles">
+              <button
+                type="button"
+                className={`detail__action-btn${writeOpen ? ' detail__action-btn--added' : ''}`}
+                onClick={toggleWrite}
+                aria-expanded={writeOpen}
+              >
+                Write a review
+              </button>
+              <button
+                type="button"
+                className={`detail__action-btn${ratingOpen ? ' detail__action-btn--added' : ''}`}
+                onClick={toggleRating}
+                aria-expanded={ratingOpen}
+              >
+                Rating
+              </button>
+            </div>
+
+            {gateStatus && (
+              <p className="detail__review-hint" role="status">
+                {gateStatus}
+              </p>
+            )}
+
+            <div
+              className={`detail__review-panel${writeOpen ? ' detail__review-panel--open' : ''}`}
+            >
+              <div className="detail__review-panel-inner">
+                <div className="detail__review-write">
+                  <label className="detail__review-label" htmlFor={`review-text-${item.id}`}>
+                    Your review
+                  </label>
+                  <textarea
+                    id={`review-text-${item.id}`}
+                    className="detail__review-textarea"
+                    rows={4}
+                    maxLength={2000}
+                    value={text}
+                    onChange={(event) => setText(event.target.value)}
+                    placeholder="What did you think?"
+                  />
+                  <button
+                    type="button"
+                    className="detail__review-publish"
+                    onClick={handlePublish}
+                    disabled={submitting}
+                  >
+                    {submitting ? 'Publishing…' : 'Publish review'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className={`detail__review-panel${ratingOpen ? ' detail__review-panel--open' : ''}`}
+            >
+              <div className="detail__review-panel-inner">
+                <div className="detail__review-rating">
+                  <StarRating value={rating} onChange={setRating} label="Your rating" />
+                  {rating > 0 && (
+                    <p className="detail__review-hint" role="status">
+                      Rating selected — publish a review to save it.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {error && (
+              <p className="detail__review-error" role="alert">
+                {error}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
+      <div className="detail__review-list">
+        {loading ? (
+          <p className="detail__text">Loading reviews…</p>
+        ) : reviews.length === 0 ? (
+          <p className="detail__text">No reviews yet. Be the first to share your thoughts.</p>
+        ) : (
+          <ul className="detail__reviews">
+            {reviews.map((review) => {
+              const isOwn = user?.id != null && Number(review.userId) === Number(user.id)
+              const author = isOwn && user.username ? user.username : 'Member'
+              const dateLabel = formatReviewDate(review.createdAt)
+
+              return (
+                <li key={review.id ?? `${review.userId}-${review.createdAt}`} className="detail__review">
+                  <div className="detail__review-meta">
+                    <span className="detail__review-author">{author}</span>
+                    {dateLabel && <span className="detail__review-date">{dateLabel}</span>}
+                  </div>
+                  {review.rating != null && Number(review.rating) > 0 && (
+                    <StarRating
+                      value={Number(review.rating)}
+                      interactive={false}
+                      label={`Rated ${Number(review.rating)} out of 5`}
+                    />
+                  )}
+                  <p className="detail__review-body">{review.text}</p>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+
+      <WatchlistModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        item={watchItem}
+        onAdded={(listName) => setGateStatus(`Added to ${listName}. You can write a review now.`)}
+      />
+    </section>
+  )
+}
+
 function MovieDetail({ movie }) {
   const releaseDate = formatReleaseDate(movie.releaseDate)
   const runtime = formatRuntime(movie.runtime)
@@ -345,6 +670,10 @@ function MovieDetail({ movie }) {
       <CastSection cast={movie.cast} />
 
       <WatchSection watchByRegion={movie.watch} />
+
+      <ReviewsSection item={movie} mediaType="movie" />
+
+      <SimilarSection items={movie.similar} label="Similar movies" />
     </>
   )
 }
@@ -524,6 +853,10 @@ function TvDetail({ show }) {
       <SeasonEpisodes showId={show.id} seasons={show.seasons} />
 
       <WatchSection watchByRegion={show.watch} />
+
+      <ReviewsSection item={show} mediaType="tv" />
+
+      <SimilarSection items={show.similar} label="Similar shows" />
     </>
   )
 }
@@ -546,14 +879,7 @@ function KnownForSection({ personId, movies }) {
 
   return (
     <section className="detail__section">
-      <div className="detail__section-header detail__section-header--spread">
-        <h2 className="detail__section-title">Known for…</h2>
-        {hasMore && (
-          <Link className="detail__see-all" to={`/person/${personId}/movies`}>
-            See all <span aria-hidden="true">→</span>
-          </Link>
-        )}
-      </div>
+      <h2 className="detail__section-title">Known for…</h2>
 
       <ul className="detail__movie-grid">
         {topMovies.map((movie) => (
@@ -561,6 +887,13 @@ function KnownForSection({ personId, movies }) {
             <MovieCard item={movie} />
           </li>
         ))}
+        {hasMore && (
+          <li className="detail__see-all-item">
+            <Link className="detail__see-all" to={`/person/${personId}/movies`}>
+              See all <span aria-hidden="true">→</span>
+            </Link>
+          </li>
+        )}
       </ul>
     </section>
   )

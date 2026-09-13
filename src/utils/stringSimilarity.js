@@ -15,7 +15,7 @@ function bigrams(text) {
 }
 
 /** Dice coefficient (bigram overlap) between two strings, 0..1. */
-export function diceSimilarity(a, b) {
+function diceSimilarity(a, b) {
   const left = normalize(a)
   const right = normalize(b)
 
@@ -44,40 +44,14 @@ export function diceSimilarity(a, b) {
 }
 
 /**
- * Returns the highest-scoring candidate above `threshold`, or null.
- * @param {string} query
- * @param {Iterable<string>} candidates
- * @param {{ threshold?: number }} [options]
- */
-export function bestMatch(query, candidates, { threshold = 0.5 } = {}) {
-  const trimmed = String(query ?? '').trim()
-  if (!trimmed) return null
-
-  let best = null
-
-  for (const candidate of candidates) {
-    const value = String(candidate ?? '').trim()
-    if (!value) continue
-
-    const score = diceSimilarity(trimmed, value)
-    if (score < threshold) continue
-    if (!best || score > best.score) {
-      best = { value, score }
-    }
-  }
-
-  return best
-}
-
-/**
  * Picks the best correction from weighted candidates.
  *
- * Ranking by raw similarity alone (see {@link bestMatch}) favours short, obscure
- * titles of a similar length ("Avenger" over "The Avengers"); ranking by weight
- * alone favours popular siblings ("Jurassic World" over "Jurassic Park"). This
- * balances both: it keeps candidates scoring at or above `threshold`, then uses
- * `weight` (e.g. popularity) only to break ties among those within `band` of the
- * top similarity score.
+ * Ranking by raw similarity alone favours short, obscure titles of a similar
+ * length ("Avenger" over "The Avengers"); ranking by weight alone favours
+ * popular siblings ("Jurassic World" over "Jurassic Park"). This balances both:
+ * it keeps candidates scoring at or above `threshold`, then uses `weight`
+ * (e.g. popularity) only to break ties among those within `band` of the top
+ * similarity score.
  *
  * @param {string} query
  * @param {Iterable<{ value: string, weight?: number }>} candidates

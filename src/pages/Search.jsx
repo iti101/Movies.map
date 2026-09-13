@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   detailPath,
@@ -10,6 +10,12 @@ import {
 } from '../api/tmdb.js'
 import DidYouMean from '../components/DidYouMean.jsx'
 import { useDidYouMean } from '../hooks/useDidYouMean.js'
+import {
+  buildSearchPath,
+  getHomeSearchState,
+  setHomeSearchState,
+  setSearchResultsPage,
+} from '../utils/searchSession.js'
 import './Search.css'
 
 const TYPE_OPTIONS = [
@@ -50,17 +56,23 @@ function SearchResult({ item }) {
 }
 
 function Search() {
-  const [query, setQuery] = useState('')
-  const [year, setYear] = useState('')
-  const [type, setType] = useState('all')
-  const [releaseDateOn, setReleaseDateOn] = useState(false)
-  const [genreOn, setGenreOn] = useState(false)
+  const saved = getHomeSearchState()
+  const [query, setQuery] = useState(() => saved?.query ?? '')
+  const [year, setYear] = useState(() => saved?.year ?? '')
+  const [type, setType] = useState(() => saved?.type ?? 'all')
+  const [releaseDateOn, setReleaseDateOn] = useState(() => saved?.releaseDateOn ?? false)
+  const [genreOn, setGenreOn] = useState(() => saved?.genreOn ?? false)
   const [genres, setGenres] = useState([])
   const [genresStatus, setGenresStatus] = useState('idle')
-  const [selectedGenre, setSelectedGenre] = useState(null)
-  const [results, setResults] = useState([])
-  const [status, setStatus] = useState('idle')
-  const [errorMessage, setErrorMessage] = useState('')
+  const [selectedGenre, setSelectedGenre] = useState(() => saved?.selectedGenre ?? null)
+  const [results, setResults] = useState(() => saved?.results ?? [])
+  const [status, setStatus] = useState(() => saved?.status ?? 'idle')
+  const [errorMessage, setErrorMessage] = useState(() => saved?.errorMessage ?? '')
+  const skipInitialFetch = useRef(
+    saved?.status === 'success' &&
+      Array.isArray(saved?.results) &&
+      (Boolean(saved?.query?.trim()) || Boolean(saved?.selectedGenre)),
+  )
 
   const yearDisabled = type === 'person'
   const genreDisabled = type === 'person'
@@ -71,6 +83,36 @@ function Search() {
   const resultsLabel = hasQuery
     ? `“${query.trim()}”`
     : selectedGenre?.tag || 'All results'
+  const searchCriteria = {
+    query: query.trim(),
+    type,
+    year: yearFilter,
+    genre: selectedGenre,
+  }
+
+  useEffect(() => {
+    setHomeSearchState({
+      query,
+      year,
+      type,
+      releaseDateOn,
+      genreOn,
+      selectedGenre,
+      results,
+      status,
+      errorMessage,
+    })
+  }, [
+    query,
+    year,
+    type,
+    releaseDateOn,
+    genreOn,
+    selectedGenre,
+    results,
+    status,
+    errorMessage,
+  ])
 
   useEffect(() => {
     if (!genreOn || genreDisabled) {
@@ -106,6 +148,12 @@ function Search() {
       setResults([])
       setStatus('idle')
       setErrorMessage('')
+      return
+    }
+
+    // Keep restored results when returning from a detail page (Home remounts).
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false
       return
     }
 
@@ -314,8 +362,15 @@ function Search() {
               </span>
               <Link
                 className="search__see-all"
-                to="/search"
-                state={{ results, label: resultsLabel }}
+                to={buildSearchPath(searchCriteria)}
+                state={{ results, label: resultsLabel, criteria: searchCriteria }}
+                onClick={() =>
+                  setSearchResultsPage({
+                    results,
+                    label: resultsLabel,
+                    criteria: searchCriteria,
+                  })
+                }
                 aria-label="See all results on a new page"
               >
                 See all <span aria-hidden="true">→</span>

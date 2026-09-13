@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { discoverRandom, getSearchGenres } from '../api/tmdb.js'
+import { discoverRandom, getSearchGenres, searchTmdb } from '../api/tmdb.js'
+import DidYouMean from '../components/DidYouMean.jsx'
 import MovieCard from '../components/MovieCard.jsx'
+import { useDidYouMean } from '../hooks/useDidYouMean.js'
 import './Randomizer.css'
 
 const TYPE_OPTIONS = [
@@ -11,7 +13,7 @@ const TYPE_OPTIONS = [
 const STEPS = ['type', 'mood', 'exclude', 'person']
 
 const FALLBACK_MESSAGE =
-  "Unfortunately we couldn't find anything that matches your exact specifications, but perhaps you would also like…:"
+  "Unfortunately we couldn't find any suggestions that matched your search specifications. But perhaps you'll also like this:"
 
 function toggleGenreInList(list, genre) {
   const exists = list.some((item) => item.key === genre.key)
@@ -33,6 +35,60 @@ function sameFilters(a, b) {
   )
 }
 
+/** Loosen filters gradually so we can still suggest titles that match part of the specs. */
+function buildFilterAttempts(exactFilters) {
+  const { includeGenres, excludeGenres, personName } = exactFilters
+  const trimmedPerson = String(personName ?? '').trim()
+  const attempts = [
+    exactFilters,
+    { includeGenres, excludeGenres: [], personName: trimmedPerson },
+    { includeGenres, excludeGenres: [], personName: '' },
+  ]
+
+  // Prefer keeping one mood genre at a time over dropping all of them.
+  if (includeGenres.length > 1) {
+    for (const genre of includeGenres) {
+      attempts.push({
+        includeGenres: [genre],
+        excludeGenres: [],
+        personName: trimmedPerson,
+      })
+      attempts.push({
+        includeGenres: [genre],
+        excludeGenres: [],
+        personName: '',
+      })
+    }
+  }
+
+  if (trimmedPerson) {
+    attempts.push({ includeGenres: [], excludeGenres: [], personName: trimmedPerson })
+  }
+
+  attempts.push({ includeGenres: [], excludeGenres: [], personName: '' })
+
+  return attempts.filter(
+    (filters, index, list) =>
+      list.findIndex((item) => sameFilters(item, filters)) === index,
+  )
+}
+
+async function discoverWithFilters({ type, filters, page }) {
+  try {
+    return await discoverRandom({
+      type,
+      ...filters,
+      page,
+    })
+  } catch (error) {
+    // Missing person should fall through to looser specs, not abort the chain.
+    if (error?.code === 'PERSON_NOT_FOUND') {
+      return { results: [], page: page || 1 }
+    }
+    throw error
+  }
+}
+
 function Randomizer() {
   const [step, setStep] = useState('type')
   const [type, setType] = useState(null)
@@ -41,13 +97,22 @@ function Randomizer() {
   const [moodGenres, setMoodGenres] = useState([])
   const [excludeGenres, setExcludeGenres] = useState([])
   const [personName, setPersonName] = useState('')
+  const [personResults, setPersonResults] = useState([])
+  const [personStatus, setPersonStatus] = useState('idle')
   const [suggestions, setSuggestions] = useState([])
   const [suggestionIndex, setSuggestionIndex] = useState(0)
-  const [status, setStatus] = useState('idle')
+  const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [fallbackMessage, setFallbackMessage] = useState('')
   const [usedPages, setUsedPages] = useState([])
   const [activeFilters, setActiveFilters] = useState(null)
+
+  const personSuggestion = useDidYouMean({
+    query: personName,
+    type: 'person',
+    results: personResults,
+    status: personStatus,
+  })
 
   useEffect(() => {
     if (!type) {
@@ -80,27 +145,67 @@ function Randomizer() {
     }
   }, [type])
 
+  useEffect(() => {
+    if (step !== 'person') {
+      setPersonResults([])
+      setPersonStatus('idle')
+      return
+    }
+
+    const trimmed = personName.trim()
+    if (trimmed.length < 4) {
+      setPersonResults([])
+      setPersonStatus('idle')
+      return
+    }
+
+    let cancelled = false
+    setPersonStatus('loading')
+
+    const timer = setTimeout(async () => {
+      try {
+        const data = await searchTmdb({ query: trimmed, type: 'person' })
+        if (cancelled) return
+        setPersonResults(data)
+        setPersonStatus('success')
+      } catch {
+        if (cancelled) return
+        setPersonResults([])
+        setPersonStatus('error')
+      }
+    }, 300)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [personName, step])
+
+  const acceptPersonSuggestion = (name) => {
+    setPersonName(name)
+    setErrorMessage('')
+  }
+
   const stepIndex = STEPS.indexOf(step)
   const typeLabel = TYPE_OPTIONS.find((option) => option.id === type)?.label
 
-  const goToStep = (nextStep) => {
-    setStep(nextStep)
+  const clearResults = () => {
     setSuggestions([])
     setSuggestionIndex(0)
-    setStatus('idle')
+    setLoading(false)
     setErrorMessage('')
     setFallbackMessage('')
     setActiveFilters(null)
   }
 
+  const goToStep = (nextStep) => {
+    setStep(nextStep)
+    clearResults()
+  }
+
   const selectType = (nextType) => {
     setType(nextType)
-    setSuggestions([])
-    setSuggestionIndex(0)
-    setStatus('idle')
-    setErrorMessage('')
-    setFallbackMessage('')
-    setActiveFilters(null)
+    clearResults()
     setUsedPages([])
     setPersonName('')
     setStep('mood')
@@ -129,7 +234,7 @@ function Randomizer() {
   const runDiscover = async ({ append }) => {
     if (!type) return
 
-    setStatus('loading')
+    setLoading(true)
     setErrorMessage('')
     if (!append) setFallbackMessage('')
 
@@ -150,17 +255,8 @@ function Randomizer() {
         personName,
       }
 
-      const filterAttempts = append && activeFilters
-        ? [activeFilters]
-        : [
-            exactFilters,
-            { includeGenres: moodGenres, excludeGenres: [], personName },
-            { includeGenres: moodGenres, excludeGenres: [], personName: '' },
-            { includeGenres: [], excludeGenres: [], personName },
-            { includeGenres: [], excludeGenres: [], personName: '' },
-          ].filter((filters, index, list) =>
-            list.findIndex((item) => sameFilters(item, filters)) === index,
-          )
+      const filterAttempts =
+        append && activeFilters ? [activeFilters] : buildFilterAttempts(exactFilters)
 
       let results = []
       let resolvedPage = page
@@ -169,9 +265,9 @@ function Randomizer() {
 
       for (let index = 0; index < filterAttempts.length; index += 1) {
         const filters = filterAttempts[index]
-        const response = await discoverRandom({
+        const response = await discoverWithFilters({
           type,
-          ...filters,
+          filters,
           page: index === 0 ? page : undefined,
         })
 
@@ -193,21 +289,18 @@ function Randomizer() {
       setActiveFilters(usedFilters)
 
       if (!results.length) {
-        if (!append) {
+        if (append) {
+          setErrorMessage('No more suggestions for these filters.')
+        } else {
           setSuggestions([])
           setSuggestionIndex(0)
-          setStatus('empty')
           setFallbackMessage('')
-          setErrorMessage(FALLBACK_MESSAGE)
-        } else {
-          setStatus('success')
-          setErrorMessage('No more suggestions for these filters.')
+          setErrorMessage('No suggestions available for these filters. Try different specs.')
         }
         return
       }
 
-      setErrorMessage('')
-      setFallbackMessage(usedFallback ? FALLBACK_MESSAGE : append ? fallbackMessage : '')
+      if (usedFallback) setFallbackMessage(FALLBACK_MESSAGE)
 
       if (!append) {
         setSuggestions(results)
@@ -219,31 +312,24 @@ function Randomizer() {
         setSuggestions([...suggestions, ...fresh])
         if (fresh.length) setSuggestionIndex(previousLength)
       }
-      setStatus('success')
-    } catch (error) {
+    } catch {
       if (!append) {
         setSuggestions([])
         setSuggestionIndex(0)
         setFallbackMessage('')
         setActiveFilters(null)
       }
-      setStatus('error')
-      setErrorMessage(
-        error?.code === 'PERSON_NOT_FOUND'
-          ? error.message
-          : 'Could not load suggestions. Try again.',
-      )
+      setErrorMessage('Could not load suggestions. Try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleSubmit = (event) => {
     event.preventDefault()
     if (step !== 'person') return
+    clearResults()
     setUsedPages([])
-    setSuggestions([])
-    setSuggestionIndex(0)
-    setFallbackMessage('')
-    setActiveFilters(null)
     runDiscover({ append: false })
   }
 
@@ -256,14 +342,14 @@ function Randomizer() {
       setSuggestionIndex((current) => current + 1)
       return
     }
-    if (status !== 'loading') {
+    if (!loading) {
       runDiscover({ append: true })
     }
   }
 
   const hasSuggestions = suggestions.length > 0
   const currentSuggestion = suggestions[suggestionIndex] || null
-  const continueLabel = step === 'mood' || step === 'exclude' ? 'Continue' : null
+  const showContinue = step === 'mood' || step === 'exclude'
   const showChosenType = stepIndex > 0 && typeLabel
   const showChosenMood = stepIndex > 1
   const showChosenExclude = stepIndex > 2
@@ -405,17 +491,21 @@ function Randomizer() {
           )}
 
           {step === 'person' && (
-            <label className="randomizer__person">
-              <span className="randomizer__legend">Who should star in / direct it?</span>
-              <input
-                className="randomizer__input"
-                type="text"
-                value={personName}
-                onChange={(event) => setPersonName(event.target.value)}
-                placeholder="Optional — e.g. Johnny Depp"
-                autoComplete="off"
-              />
-            </label>
+            <div className="randomizer__person">
+              <label className="randomizer__person-field" htmlFor="randomizer-person">
+                <span className="randomizer__legend">Who should star in / direct it?</span>
+                <input
+                  id="randomizer-person"
+                  className="randomizer__input"
+                  type="text"
+                  value={personName}
+                  onChange={(event) => setPersonName(event.target.value)}
+                  placeholder="Optional — e.g. Johnny Depp"
+                  autoComplete="off"
+                />
+              </label>
+              <DidYouMean suggestion={personSuggestion} onAccept={acceptPersonSuggestion} />
+            </div>
           )}
 
           <div className="randomizer__actions">
@@ -425,9 +515,9 @@ function Randomizer() {
               </button>
             )}
 
-            {continueLabel && (
+            {showContinue && (
               <button type="button" className="randomizer__continue" onClick={goNext}>
-                {continueLabel}
+                Continue
               </button>
             )}
 
@@ -435,9 +525,9 @@ function Randomizer() {
               <button
                 type="submit"
                 className="randomizer__submit"
-                disabled={!type || status === 'loading'}
+                disabled={!type || loading}
               >
-                {status === 'loading' && !hasSuggestions ? 'Finding…' : 'Randomize'}
+                {loading && !hasSuggestions ? 'Finding…' : 'Randomize'}
               </button>
             )}
           </div>
@@ -476,7 +566,7 @@ function Randomizer() {
                 type="button"
                 className="randomizer__nav"
                 aria-label="Next suggestion"
-                disabled={status === 'loading'}
+                disabled={loading}
                 onClick={showNextSuggestion}
               >
                 ›

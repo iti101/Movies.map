@@ -5,16 +5,7 @@ import { useModalDismiss } from '../hooks/useModalDismiss.js'
 import './LoginModal.css'
 import './CreateAccountModal.css'
 
-function PasswordField({
-  id,
-  label,
-  name,
-  placeholder,
-  autoComplete,
-  value,
-  onChange,
-  required = true,
-}) {
+function PasswordField({ id, label, name, placeholder, autoComplete, value, onChange }) {
   const [visible, setVisible] = useState(false)
 
   return (
@@ -32,7 +23,7 @@ function PasswordField({
           autoComplete={autoComplete}
           value={value}
           onChange={onChange}
-          required={required}
+          required
         />
         <button
           type="button"

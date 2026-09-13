@@ -1,4 +1,6 @@
-const BASE_URL = (import.meta.env.VITE_NOVI_BASE_URL || '').replace(/\/$/, '')
+const CONFIGURED_BASE_URL = (import.meta.env.VITE_NOVI_BASE_URL || '').replace(/\/$/, '')
+// In dev, call same-origin /novi (Vite proxy) so CORS never blocks login.
+const BASE_URL = import.meta.env.DEV ? '/novi' : CONFIGURED_BASE_URL
 const PROJECT_ID = import.meta.env.VITE_NOVI_PROJECT_ID
 
 export class NoviApiError extends Error {
@@ -10,7 +12,7 @@ export class NoviApiError extends Error {
 }
 
 function ensureConfig() {
-  if (!BASE_URL || !PROJECT_ID) {
+  if (!PROJECT_ID || (!import.meta.env.DEV && !CONFIGURED_BASE_URL)) {
     throw new NoviApiError(
       'Missing NOVI env vars. Add VITE_NOVI_BASE_URL and VITE_NOVI_PROJECT_ID to .env and restart the dev server.',
     )
@@ -30,7 +32,7 @@ async function readErrorMessage(response) {
   return null
 }
 
-export async function noviFetch(path, { method = 'GET', body, token } = {}) {
+async function noviFetch(path, { method = 'GET', body, token } = {}) {
   ensureConfig()
 
   const headers = {
@@ -131,6 +133,42 @@ export async function createProfile({ userId, username }, token) {
     }
     throw error
   }
+}
+
+/** GET /api/reviews — filter client-side by mediaType + mediaId */
+export async function getReviewsForMedia(mediaType, mediaId, token) {
+  const all = await noviFetch('/api/reviews', { token })
+  const list = Array.isArray(all) ? all : []
+  return list
+    .filter(
+      (review) =>
+        review.mediaType === mediaType && Number(review.mediaId) === Number(mediaId),
+    )
+    .sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return bTime - aTime
+    })
+}
+
+/** POST /api/reviews — publish a review for a title */
+export async function createReview({ userId, mediaType, mediaId, text, rating }, token) {
+  const body = {
+    userId,
+    mediaType,
+    mediaId: Number(mediaId),
+    text: text.trim(),
+  }
+
+  if (rating != null && Number.isFinite(Number(rating))) {
+    body.rating = Number(rating)
+  }
+
+  return noviFetch('/api/reviews', {
+    method: 'POST',
+    body,
+    token,
+  })
 }
 
 /** Prefer JWT-scoped profile, then fall back to filtering all profiles. */

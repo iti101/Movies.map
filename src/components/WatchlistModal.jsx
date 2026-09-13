@@ -28,8 +28,7 @@ function WatchlistModal({ isOpen, onClose, item = null, onAdded }) {
 
   if (!isOpen) return null
 
-  const isCreateOnly = !item
-  const title = creating || isCreateOnly ? 'Create a new list' : 'Add to a list'
+  const title = creating ? 'Create a new list' : 'Add to a list'
 
   function finishAdd(list) {
     if (item) {
@@ -76,7 +75,7 @@ function WatchlistModal({ isOpen, onClose, item = null, onAdded }) {
           <p className="watchlist-modal__subtitle">Choose a list for {item.title}.</p>
         )}
 
-        {creating || isCreateOnly ? (
+        {creating ? (
           <form className="login-modal__form" onSubmit={handleCreate}>
             <label className="login-modal__field">
               <span className="login-modal__label">List name</span>
